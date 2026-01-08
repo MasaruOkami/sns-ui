@@ -417,29 +417,61 @@
         return json; // { caption, hashtags, ... }
       }
 
-      // STEP2.5: フィードバック（短く）
-      shorterBtn.addEventListener("click", async () => {
-        if (!planId) return;
-
-        const prevText = shorterBtn.textContent;
-        try {
-          shorterBtn.disabled = true;
-          shorterBtn.textContent = "生成中...";
-
-          const out = await callFeedback("shorter_text");
-
-          // 画面に即反映
-          renderCaptionAndHashtags(out.caption, out.hashtags);
-
-          shorterBtn.textContent = "✂ もう少し短く";
-          shorterBtn.disabled = false;
-        } catch (e) {
-          console.error(e);
-          shorterBtn.textContent = prevText || "✂ もう少し短く";
-          shorterBtn.disabled = false;
-          alert(`再生成に失敗しました：${e?.message || e}`);
-        }
-      });
+      <!-- STEP 2.5: フィードバック（再生成） -->
+      <div class="section">
+        <div class="step-label">STEP 2.5</div>
+        <div class="section-title">仕上げ調整</div>
+      
+        <div class="chip-grid compact">
+          <button class="chip chip-ok" id="ok-btn" type="button">
+            ✅ この内容でOK
+          </button>
+      
+          <button class="chip" data-action="softer_tone" type="button" disabled>
+            ✏️ やわらかい文に
+          </button>
+      
+          <button class="chip" data-action="more_formal" type="button" disabled>
+            🧑‍💼 もっと丁寧に
+          </button>
+      
+          <button class="chip" data-action="more_friendly" type="button" disabled>
+            😊 親しみやすく
+          </button>
+      
+          <button class="chip" id="shorter-btn" data-action="shorter_text" type="button" disabled>
+            ✂️ 文章を短く
+          </button>
+      
+          <button class="chip" data-action="less_emoji" type="button" disabled>
+            😃 絵文字を減らす
+          </button>
+      
+          <button class="chip" data-action="more_emoji" type="button" disabled>
+            😃 絵文字を増やす
+          </button>
+      
+          <button class="chip" data-action="adjust_hashtags" type="button" disabled>
+            #️⃣ タグを調整
+          </button>
+      
+          <button class="chip" data-action="change_image" type="button" disabled>
+            🖼️ 画像を変える
+          </button>
+      
+          <button class="chip" data-action="change_schedule" type="button" disabled>
+            ⏰ 日時を変える
+          </button>
+      
+          <button class="chip" data-action="adjust_video" type="button" disabled>
+            🎬 動画を調整
+          </button>
+        </div>
+      
+        <div class="hint-small">
+          ※ 今は「✂️ 文章を短く」だけ操作できます（他は順次対応）
+        </div>
+      </div>
 
       // STEP1: 画像を保存用に開く（新しいタブで画像URLを開く）
       openImageBtn.addEventListener("click", () => {
