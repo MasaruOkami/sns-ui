@@ -3,10 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>SNS 投稿プレビュー</title>
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <style>
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial,
@@ -144,6 +141,7 @@
     <!-- supabase-js v2 (グローバル変数として読み込み) -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   </head>
+
   <body>
     <div class="container">
       <div class="card">
@@ -157,8 +155,8 @@
 
           <div class="media" id="media">
             <div class="media-placeholder" id="media-placeholder">
-              画像がまだ設定されていません。
-              <br />generated_media_url または Storage の画像が入るとここに表示されます。
+              画像がまだ設定されていません。<br />
+              generated_media_url または Storage の画像が入るとここに表示されます。
             </div>
           </div>
 
@@ -167,7 +165,7 @@
               画像を保存用に開く
             </button>
           </div>
-          <div class="hint-small" id="image-hint">
+          <div class="hint-small" id="image-hint" style="display: none;">
             ボタンを押して画像を全画面表示し、長押しで「写真を保存」を選んでください。
           </div>
         </div>
@@ -192,13 +190,13 @@
         <div class="section">
           <div class="step-label">STEP 2.5</div>
           <div class="section-title">文章を微調整（再生成）</div>
-        
+
           <div class="actions">
             <button class="btn btn-secondary" id="shorter-btn" disabled>
               ✂ もう少し短く
             </button>
           </div>
-        
+
           <div class="hint-small">
             ボタンを押すと数秒後にキャプションが更新されます。
           </div>
@@ -232,6 +230,7 @@
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6aGF2dWhqcGZ3c3JsamtweXJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyODg4MDMsImV4cCI6MjA3Nzg2NDgwM30.h2k2gnOcqme4JSg7VEkpqbIwh27OmdTqX_HkIUTniU4";
 
       const FUNCTIONS_BASE_URL = `${SUPABASE_URL}/functions/v1`;
+
       const { createClient } = supabase;
       const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -252,6 +251,23 @@
 
       let currentMediaUrl = null;
 
+      function normalizeHashtags(hashtagsArr) {
+        return (hashtagsArr || [])
+          .map((h) => String(h || "").trim())
+          .filter(Boolean)
+          .map((h) => (h.startsWith("#") ? h : `#${h}`))
+          .join(" ");
+      }
+
+      function renderCaptionAndHashtags(caption, hashtagsArr) {
+        captionEl.textContent = caption || "キャプションが未設定です。";
+        const hashtags = normalizeHashtags(hashtagsArr);
+        hashtagsEl.textContent = hashtags;
+
+        const fullText = `${captionEl.textContent}\n\n${hashtags}`;
+        copyBtn.dataset.fulltext = fullText;
+      }
+
       if (!planId) {
         captionEl.textContent = "";
         errorEl.style.display = "block";
@@ -259,6 +275,7 @@
           "plan_id が指定されていません。メールのリンクから開いてください。";
         copyBtn.disabled = true;
         openImageBtn.disabled = true;
+        shorterBtn.disabled = true;
       } else {
         loadPlan(planId);
       }
@@ -286,6 +303,7 @@
               "プラン情報の取得に失敗しました。リンクが古い可能性があります。";
             copyBtn.disabled = true;
             openImageBtn.disabled = true;
+            shorterBtn.disabled = true;
             return;
           }
 
@@ -301,18 +319,12 @@
             : "日時未設定";
 
           metaEl.textContent = `${plan.store_id} / ${plan.platform} / ${plan.media_kind} / ${dtStr}`;
-          shorterBtn.disabled = false;
 
           // キャプション・ハッシュタグ
-          captionEl.textContent =
-            plan.caption || "キャプションが未設定です。";
-          const hashtags = (plan.hashtags || [])
-            .map((h) => (h.startsWith("#") ? h : `#${h}`))
-            .join(" ");
-          hashtagsEl.textContent = hashtags;
+          renderCaptionAndHashtags(plan.caption || "", plan.hashtags || []);
 
-          const fullText = `${captionEl.textContent}\n\n${hashtags}`;
-          copyBtn.dataset.fulltext = fullText;
+          // フィードバックボタン有効化
+          shorterBtn.disabled = false;
 
           // 2) 画像URLの決定ロジック
           let finalMediaUrl = null;
@@ -355,8 +367,7 @@
             openImageBtn.disabled = false;
             imageHintEl.style.display = "block";
           } else {
-            mediaPlaceholderEl.textContent =
-              "画像URLがまだ設定されていません。";
+            mediaPlaceholderEl.textContent = "画像URLがまだ設定されていません。";
             openImageBtn.disabled = true;
             imageHintEl.style.display = "none";
           }
@@ -367,6 +378,7 @@
           errorEl.textContent = "予期しないエラーが発生しました。";
           copyBtn.disabled = true;
           openImageBtn.disabled = true;
+          shorterBtn.disabled = true;
         }
       }
 
@@ -397,38 +409,28 @@
             action, // "shorter_text"
           }),
         });
-      
+
         const json = await res.json();
         if (!res.ok) {
           throw new Error(json?.error || "feedback failed");
         }
         return json; // { caption, hashtags, ... }
       }
-      
-      function renderCaptionAndHashtags(caption, hashtagsArr) {
-        captionEl.textContent = caption || "キャプションが未設定です。";
-        const hashtags = (hashtagsArr || [])
-          .map((h) => (h.startsWith("#") ? h : `#${h}`))
-          .join(" ");
-        hashtagsEl.textContent = hashtags;
-      
-        const fullText = `${captionEl.textContent}\n\n${hashtags}`;
-        copyBtn.dataset.fulltext = fullText;
-      }
-      
+
+      // STEP2.5: フィードバック（短く）
       shorterBtn.addEventListener("click", async () => {
         if (!planId) return;
-      
+
         const prevText = shorterBtn.textContent;
         try {
           shorterBtn.disabled = true;
           shorterBtn.textContent = "生成中...";
-      
+
           const out = await callFeedback("shorter_text");
-      
+
           // 画面に即反映
           renderCaptionAndHashtags(out.caption, out.hashtags);
-      
+
           shorterBtn.textContent = "✂ もう少し短く";
           shorterBtn.disabled = false;
         } catch (e) {
