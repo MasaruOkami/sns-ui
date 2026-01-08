@@ -123,7 +123,7 @@
         color: #777;
       }
       .hint-small {
-        margin-top: 4px;
+        margin-top: 6px;
         font-size: 11px;
         color: #888;
       }
@@ -136,9 +136,37 @@
         font-size: 13px;
         color: #555;
       }
+
+      /* === STEP 2.5 チップUI === */
+      .chip-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .chip {
+        border: 1px solid #d9d9de;
+        background: #fff;
+        color: #333;
+        border-radius: 14px;
+        padding: 12px 14px;
+        font-size: 13px;
+        min-height: 44px; /* スマホ押しやすさ */
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+      }
+      .chip:hover { background: #fafafa; }
+      .chip:disabled { opacity: 0.45; cursor: not-allowed; }
+      .chip-ok {
+        border-color: #bfe5c8;
+        background: #f2fbf5;
+        font-weight: 600;
+      }
     </style>
 
-    <!-- supabase-js v2 (グローバル変数として読み込み) -->
+    <!-- supabase-js v2 -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   </head>
 
@@ -191,13 +219,23 @@
           <div class="step-label">STEP 2.5</div>
           <div class="section-title">文章を微調整（再生成）</div>
 
-          <div class="actions">
-            <button class="btn btn-secondary" id="shorter-btn" disabled>
-              ✂ もう少し短く
-            </button>
+          <div class="chip-grid">
+            <button class="chip chip-ok" id="ok-btn" type="button" disabled>✅ この内容でOK</button>
+
+            <button class="chip" data-action="shorter_text" type="button" disabled>✂️ 文章を短く</button>
+            <button class="chip" data-action="longer_text" type="button" disabled>📝 文章を長く</button>
+
+            <button class="chip" data-action="less_emoji" type="button" disabled>😃 絵文字を減らす</button>
+            <button class="chip" data-action="more_emoji" type="button" disabled>😃 絵文字を増やす</button>
+
+            <button class="chip" data-action="softer_tone" type="button" disabled>✏️ やわらかく</button>
+            <button class="chip" data-action="more_formal" type="button" disabled>🧑‍💼 もっと丁寧に</button>
+            <button class="chip" data-action="more_friendly" type="button" disabled>😊 親しみやすく</button>
+
+            <button class="chip" data-action="adjust_hashtags" type="button" disabled>#️⃣ タグ調整</button>
           </div>
 
-          <div class="hint-small">
+          <div class="hint-small" id="feedback-hint">
             ボタンを押すと数秒後にキャプションが更新されます。
           </div>
         </div>
@@ -246,8 +284,8 @@
       const copyBtn = document.getElementById("copy-btn");
       const openInstagramBtn = document.getElementById("open-instagram");
       const openImageBtn = document.getElementById("open-image-btn");
-      const shorterBtn = document.getElementById("shorter-btn");
       const imageHintEl = document.getElementById("image-hint");
+      const okBtn = document.getElementById("ok-btn");
 
       let currentMediaUrl = null;
 
@@ -268,6 +306,12 @@
         copyBtn.dataset.fulltext = fullText;
       }
 
+      function setFeedbackButtonsEnabled(enabled) {
+        document.querySelectorAll("button[data-action], #ok-btn").forEach((btn) => {
+          btn.disabled = !enabled;
+        });
+      }
+
       if (!planId) {
         captionEl.textContent = "";
         errorEl.style.display = "block";
@@ -275,8 +319,9 @@
           "plan_id が指定されていません。メールのリンクから開いてください。";
         copyBtn.disabled = true;
         openImageBtn.disabled = true;
-        shorterBtn.disabled = true;
+        setFeedbackButtonsEnabled(false);
       } else {
+        setFeedbackButtonsEnabled(false);
         loadPlan(planId);
       }
 
@@ -303,19 +348,14 @@
               "プラン情報の取得に失敗しました。リンクが古い可能性があります。";
             copyBtn.disabled = true;
             openImageBtn.disabled = true;
-            shorterBtn.disabled = true;
+            setFeedbackButtonsEnabled(false);
             return;
           }
 
           // メタ情報
           const dt = plan.scheduled_at ? new Date(plan.scheduled_at) : null;
           const dtStr = dt
-            ? `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(
-                2,
-                "0"
-              )}/${String(dt.getDate()).padStart(2, "0")} ${String(
-                dt.getHours()
-              ).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`
+            ? `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2,"0")}/${String(dt.getDate()).padStart(2,"0")} ${String(dt.getHours()).padStart(2,"0")}:${String(dt.getMinutes()).padStart(2,"0")}`
             : "日時未設定";
 
           metaEl.textContent = `${plan.store_id} / ${plan.platform} / ${plan.media_kind} / ${dtStr}`;
@@ -323,26 +363,19 @@
           // キャプション・ハッシュタグ
           renderCaptionAndHashtags(plan.caption || "", plan.hashtags || []);
 
-          // フィードバックボタン有効化
-          shorterBtn.disabled = false;
-
           // 2) 画像URLの決定ロジック
           let finalMediaUrl = null;
 
           if (plan.generated_media_url) {
-            // a) generated_media_url が入っている場合はそのまま
             finalMediaUrl = plan.generated_media_url;
           } else if (plan.media_id) {
-            // b) media_id があれば sns_media_assets から Storage 情報を取得
             const { data: asset, error: assetError } = await client
               .from("sns_media_assets")
               .select("storage_bucket, storage_key")
               .eq("media_id", plan.media_id)
               .maybeSingle();
 
-            if (assetError) {
-              console.error("assetError", assetError);
-            }
+            if (assetError) console.error("assetError", assetError);
 
             if (asset && asset.storage_bucket && asset.storage_key) {
               const { data: publicUrlData } = client.storage
@@ -367,10 +400,21 @@
             openImageBtn.disabled = false;
             imageHintEl.style.display = "block";
           } else {
-            mediaPlaceholderEl.textContent = "画像URLがまだ設定されていません。";
+            // mediaElがimgで置き換わっている可能性もあるので安全に戻す
+            mediaEl.innerHTML = "";
+            const ph = document.createElement("div");
+            ph.className = "media-placeholder";
+            ph.id = "media-placeholder";
+            ph.textContent = "画像URLがまだ設定されていません。";
+            mediaEl.appendChild(ph);
+
             openImageBtn.disabled = true;
             imageHintEl.style.display = "none";
           }
+
+          // ✅ planが読めたらボタンON
+          setFeedbackButtonsEnabled(true);
+
         } catch (e) {
           console.error(e);
           captionEl.textContent = "";
@@ -378,7 +422,7 @@
           errorEl.textContent = "予期しないエラーが発生しました。";
           copyBtn.disabled = true;
           openImageBtn.disabled = true;
-          shorterBtn.disabled = true;
+          setFeedbackButtonsEnabled(false);
         }
       }
 
@@ -406,7 +450,7 @@
           },
           body: JSON.stringify({
             plan_id: planId,
-            action, // "shorter_text"
+            action,
           }),
         });
 
@@ -417,28 +461,40 @@
         return json; // { caption, hashtags, ... }
       }
 
-      <!-- STEP 2.5: フィードバック（再生成） -->
-      <div class="section">
-        <div class="step-label">STEP 2.5</div>
-        <div class="section-title">仕上げ調整</div>
-      
-        <div class="chip-grid compact">
-          <button class="chip" data-action="shorter_text" type="button">✂️ 文章を短く</button>
-          <button class="chip" data-action="less_emoji" type="button">😃 絵文字を減らす</button>
-          <button class="chip" data-action="more_emoji" type="button">😃 絵文字を増やす</button>
-          <button class="chip" data-action="softer_tone" type="button">✏️ やわらかく</button>
-          <button class="chip" data-action="more_formal" type="button">🧑‍💼 もっと丁寧に</button>
-          <button class="chip" data-action="more_friendly" type="button">😊 親しみやすく</button>
-          <button class="chip" data-action="longer_text" type="button">📝 文章を長く</button>
-          <button class="chip" data-action="adjust_hashtags" type="button">#️⃣ タグ調整</button>
-        </div>
-      
-        <div class="hint-small">
-          ※ 今は「✂️ 文章を短く」だけ操作できます（他は順次対応）
-        </div>
-      </div>
+      // ✅ 全ボタン共通ハンドラ（data-action）
+      document.querySelectorAll("button[data-action]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          if (!planId) return;
+          const action = btn.dataset.action;
+          if (!action) return;
 
-      // STEP1: 画像を保存用に開く（新しいタブで画像URLを開く）
+          const prevText = btn.textContent;
+
+          try {
+            setFeedbackButtonsEnabled(false);
+            btn.textContent = "生成中...";
+
+            const out = await callFeedback(action);
+
+            renderCaptionAndHashtags(out.caption, out.hashtags);
+
+            btn.textContent = prevText;
+            setFeedbackButtonsEnabled(true);
+          } catch (e) {
+            console.error(e);
+            btn.textContent = prevText;
+            setFeedbackButtonsEnabled(true);
+            alert(`再生成に失敗しました：${e?.message || e}`);
+          }
+        });
+      });
+
+      // ✅ OKボタン（今はMVP：とりあえず通知だけ）
+      okBtn.addEventListener("click", () => {
+        alert("OK（確定）の処理は次に追加できます（例：sns_post_plans.status='approved'）。");
+      });
+
+      // STEP1: 画像を保存用に開く
       openImageBtn.addEventListener("click", () => {
         if (!currentMediaUrl) return;
         window.open(currentMediaUrl, "_blank");
@@ -446,7 +502,6 @@
 
       // STEP3: Instagram を開く
       openInstagramBtn.addEventListener("click", () => {
-        // Instagram アプリを試す → ダメならWeb
         window.location.href = "instagram://app";
         setTimeout(() => {
           window.location.href = "https://www.instagram.com/";
