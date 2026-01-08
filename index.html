@@ -230,20 +230,22 @@
           let imageUrl = data.generated_media_url || null;
 
           // generated_media_url が無くて media_id があれば sns_media_assets から補完
+          // ✅ 実テーブルに合わせた版
           if (!imageUrl && data.media_id) {
             try {
-              // ⚠️ ここはあなたのテーブル定義に合わせて修正してください
               const { data: media, error: mediaError } = await client
-                .from("sns_media_assets") // ← テーブル名
-                .select("bucket, storage_path") // ← 例: bucket, storage_path
+                .from("sns_media_assets")
+                .select("storage_bucket, storage_key")   // ← カラム名を合わせる
                 .eq("media_id", data.media_id)
                 .single();
-
+          
               if (!mediaError && media) {
                 const { data: urlData } = client.storage
-                  .from(media.bucket)
-                  .getPublicUrl(media.storage_path); // ← カラム名に合わせる
+                  .from(media.storage_bucket)           // ← storage_bucket
+                  .getPublicUrl(media.storage_key);     // ← storage_key
+          
                 imageUrl = urlData?.publicUrl || null;
+                console.log("resolved imageUrl:", imageUrl);
               } else {
                 console.warn("media not found or error", mediaError);
               }
