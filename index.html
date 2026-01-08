@@ -188,6 +188,22 @@
           </div>
         </div>
 
+        <!-- STEP 2.5: フィードバック（再生成） -->
+        <div class="section">
+          <div class="step-label">STEP 2.5</div>
+          <div class="section-title">文章を微調整（再生成）</div>
+        
+          <div class="actions">
+            <button class="btn btn-secondary" id="shorter-btn" disabled>
+              ✂ もう少し短く
+            </button>
+          </div>
+        
+          <div class="hint-small">
+            ボタンを押すと数秒後にキャプションが更新されます。
+          </div>
+        </div>
+
         <!-- STEP 3: Instagram を開く -->
         <div class="section">
           <div class="step-label">STEP 3</div>
@@ -215,6 +231,7 @@
       const SUPABASE_ANON_KEY =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6aGF2dWhqcGZ3c3JsamtweXJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyODg4MDMsImV4cCI6MjA3Nzg2NDgwM30.h2k2gnOcqme4JSg7VEkpqbIwh27OmdTqX_HkIUTniU4";
 
+      const FUNCTIONS_BASE_URL = `${SUPABASE_URL}/functions/v1`;
       const { createClient } = supabase;
       const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -230,6 +247,7 @@
       const copyBtn = document.getElementById("copy-btn");
       const openInstagramBtn = document.getElementById("open-instagram");
       const openImageBtn = document.getElementById("open-image-btn");
+      const shorterBtn = document.getElementById("shorter-btn");
       const imageHintEl = document.getElementById("image-hint");
 
       let currentMediaUrl = null;
@@ -283,6 +301,7 @@
             : "日時未設定";
 
           metaEl.textContent = `${plan.store_id} / ${plan.platform} / ${plan.media_kind} / ${dtStr}`;
+          shorterBtn.disabled = false;
 
           // キャプション・ハッシュタグ
           captionEl.textContent =
@@ -363,6 +382,60 @@
         } catch (e) {
           alert("コピーに失敗しました。手動で選択してコピーしてください。");
           console.error(e);
+        }
+      });
+
+      async function callFeedback(action) {
+        const res = await fetch(`${FUNCTIONS_BASE_URL}/sns-preview-feedback`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            plan_id: planId,
+            action, // "shorter_text"
+          }),
+        });
+      
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json?.error || "feedback failed");
+        }
+        return json; // { caption, hashtags, ... }
+      }
+      
+      function renderCaptionAndHashtags(caption, hashtagsArr) {
+        captionEl.textContent = caption || "キャプションが未設定です。";
+        const hashtags = (hashtagsArr || [])
+          .map((h) => (h.startsWith("#") ? h : `#${h}`))
+          .join(" ");
+        hashtagsEl.textContent = hashtags;
+      
+        const fullText = `${captionEl.textContent}\n\n${hashtags}`;
+        copyBtn.dataset.fulltext = fullText;
+      }
+      
+      shorterBtn.addEventListener("click", async () => {
+        if (!planId) return;
+      
+        const prevText = shorterBtn.textContent;
+        try {
+          shorterBtn.disabled = true;
+          shorterBtn.textContent = "生成中...";
+      
+          const out = await callFeedback("shorter_text");
+      
+          // 画面に即反映
+          renderCaptionAndHashtags(out.caption, out.hashtags);
+      
+          shorterBtn.textContent = "✂ もう少し短く";
+          shorterBtn.disabled = false;
+        } catch (e) {
+          console.error(e);
+          shorterBtn.textContent = prevText || "✂ もう少し短く";
+          shorterBtn.disabled = false;
+          alert(`再生成に失敗しました：${e?.message || e}`);
         }
       });
 
