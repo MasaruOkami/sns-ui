@@ -151,9 +151,10 @@
     </div>
 
     <script>
-      // ✅ ここをあなたの Supabase 情報に置き換える
-      const SUPABASE_URL = "https://xzhavuhjpfwsrljkpyrv.supabase.co"; // ← Project URL
-      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6aGF2dWhqcGZ3c3JsamtweXJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyODg4MDMsImV4cCI6MjA3Nzg2NDgwM30.h2k2gnOcqme4JSg7VEkpqbIwh27OmdTqX_HkIUTniU4"; // ← anon public key
+      // ✅ あなたの Supabase 情報
+      const SUPABASE_URL = "https://xzhavuhjpfwsrljkpyrv.supabase.co";
+      const SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6aGF2dWhqcGZ3c3JsamtweXJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyODg4MDMsImV4cCI6MjA3Nzg2NDgwM30.h2k2gnOcqme4JSg7VEkpqbIwh27OmdTqX_HkIUTniU4";
 
       const { createClient } = supabase;
       const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -184,11 +185,13 @@
         try {
           captionEl.textContent = "読み込み中...";
           hashtagsEl.textContent = "";
+          errorEl.style.display = "none";
 
+          // ① プラン取得（media_id を追加）
           const { data, error } = await client
             .from("sns_post_plans")
             .select(
-              "store_id, platform, media_kind, scheduled_at, caption, hashtags, generated_media_url, posted_url"
+              "store_id, platform, media_kind, scheduled_at, caption, hashtags, generated_media_url, posted_url, media_id"
             )
             .eq("plan_id", planId)
             .single();
@@ -203,6 +206,7 @@
             return;
           }
 
+          // ② メタ表示
           const dt = data.scheduled_at ? new Date(data.scheduled_at) : null;
           const dtStr = dt
             ? `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(
@@ -215,25 +219,55 @@
 
           metaEl.textContent = `${data.store_id} / ${data.platform} / ${data.media_kind} / ${dtStr}`;
 
+          // ③ キャプション・ハッシュタグ
           captionEl.textContent = data.caption || "キャプションが未設定です。";
           const hashtags = (data.hashtags || [])
             .map((h) => (h.startsWith("#") ? h : `#${h}`))
             .join(" ");
           hashtagsEl.textContent = hashtags;
 
-          if (data.generated_media_url) {
+          // ④ 画像URL決定ロジック
+          let imageUrl = data.generated_media_url || null;
+
+          // generated_media_url が無くて media_id があれば sns_media_assets から補完
+          if (!imageUrl && data.media_id) {
+            try {
+              // ⚠️ ここはあなたのテーブル定義に合わせて修正してください
+              const { data: media, error: mediaError } = await client
+                .from("sns_media_assets") // ← テーブル名
+                .select("bucket, storage_path") // ← 例: bucket, storage_path
+                .eq("media_id", data.media_id)
+                .single();
+
+              if (!mediaError && media) {
+                const { data: urlData } = client.storage
+                  .from(media.bucket)
+                  .getPublicUrl(media.storage_path); // ← カラム名に合わせる
+                imageUrl = urlData?.publicUrl || null;
+              } else {
+                console.warn("media not found or error", mediaError);
+              }
+            } catch (resolveErr) {
+              console.error("画像URLの解決に失敗しました", resolveErr);
+            }
+          }
+
+          // ⑤ 画像 or プレースホルダー表示
+          if (imageUrl) {
             const img = document.createElement("img");
-            img.src = data.generated_media_url;
+            img.src = imageUrl;
             img.alt = "プレビュー画像";
-            mediaEl.innerHTML = "";
+            mediaEl.innerHTML = ""; // placeholder を消す
             mediaEl.appendChild(img);
           } else {
             mediaPlaceholderEl.textContent =
-              "画像URL（generated_media_url）がまだ設定されていません。";
+              "画像URL（generated_media_url または media_id 経由）がまだ設定されていません。";
           }
 
+          // ⑥ コピー用テキスト
           const fullText = `${captionEl.textContent}\n\n${hashtags}`;
           copyBtn.dataset.fulltext = fullText;
+          copyBtn.disabled = false;
         } catch (e) {
           console.error(e);
           captionEl.textContent = "";
