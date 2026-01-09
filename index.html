@@ -33,17 +33,27 @@
       }
       .section-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
 
-      .media {
-        margin: 4px 0 12px;
+      /* ====== Media (Carousel/Video) ====== */
+      .media-box{
         border-radius: 12px;
         overflow: hidden;
-        background: #000;
-        position: relative;
+        background: #111;
+        border: 1px solid #eee;
       }
-      .media img {
+      .media-stage{
+        position: relative;
         width: 100%;
-        display: block;
+        aspect-ratio: 16 / 9;
+        background: #111;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+      }
+      #media-img{
+        width: 100%;
+        height: 100%;
         object-fit: cover;
+        display:block;
       }
       .media-placeholder {
         padding: 40px 16px;
@@ -53,6 +63,100 @@
         background: #111;
       }
 
+      .nav-btn{
+        position:absolute;
+        top:50%;
+        transform:translateY(-50%);
+        width:44px;
+        height:44px;
+        border-radius:999px;
+        border:1px solid rgba(255,255,255,0.35);
+        background:rgba(0,0,0,0.35);
+        color:#fff;
+        font-size:28px;
+        line-height:40px;
+        display:none;
+        align-items:center;
+        justify-content:center;
+        cursor:pointer;
+      }
+      .nav-prev{ left:10px; }
+      .nav-next{ right:10px; }
+      .nav-btn:active{ transform:translateY(-50%) scale(0.98); }
+
+      .play-btn{
+        position:absolute;
+        inset:auto auto 12px 12px;
+        width:52px;
+        height:52px;
+        border-radius:999px;
+        border:1px solid rgba(255,255,255,0.35);
+        background:rgba(0,0,0,0.35);
+        color:#fff;
+        font-size:20px;
+        cursor:pointer;
+        display:none;
+      }
+
+      .media-meta{
+        padding:10px 12px;
+        background:#fff;
+      }
+      .dots{
+        display:flex;
+        gap:6px;
+        justify-content:center;
+        align-items:center;
+        margin:6px 0 10px;
+      }
+      .dot{
+        width:8px;
+        height:8px;
+        border-radius:999px;
+        background:#ddd;
+      }
+      .dot.active{ background:#ff6a3d; }
+
+      .thumbs{
+        display:flex;
+        gap:8px;
+        overflow-x:auto;
+        padding-bottom:6px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .thumb{
+        width:56px;
+        height:40px;
+        border-radius:10px;
+        overflow:hidden;
+        border:1px solid #eee;
+        flex:0 0 auto;
+        cursor:pointer;
+      }
+      .thumb img{
+        width:100%;
+        height:100%;
+        object-fit:cover;
+        display:block;
+      }
+      .thumb.active{
+        outline:2px solid #ff6a3d;
+        outline-offset:2px;
+      }
+
+      .video-link{
+        display:block;
+        text-align:center;
+        padding:10px 12px;
+        border-radius:12px;
+        border:1px solid #eee;
+        background:#fafafa;
+        color:#333;
+        text-decoration:none;
+        margin-top:8px;
+      }
+
+      /* ====== Caption/Hashtags ====== */
       .caption-label { font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px; }
       .caption-text, .hashtags {
         font-size: 14px;
@@ -130,7 +234,6 @@
         font-weight:600;
         color:#666;
       }
-
     </style>
 
     <!-- supabase-js v2 -->
@@ -148,10 +251,27 @@
           <div class="step-label">STEP 1</div>
           <div class="section-title">画像を保存</div>
 
-          <div class="media" id="media">
-            <div class="media-placeholder" id="media-placeholder">
-              画像がまだ設定されていません。<br />
-              生成後にここへ表示されます。
+          <!-- Media Preview -->
+          <div class="media-box" id="media-box">
+            <div class="media-stage">
+              <img id="media-img" alt="preview" loading="lazy" style="display:none;" />
+              <div class="media-placeholder" id="media-placeholder">
+                画像/動画がまだ設定されていません。<br />
+                生成後にここへ表示されます。
+              </div>
+
+              <button class="nav-btn nav-prev" id="nav-prev" type="button" aria-label="prev">‹</button>
+              <button class="nav-btn nav-next" id="nav-next" type="button" aria-label="next">›</button>
+
+              <button class="play-btn" id="video-play" type="button" aria-label="play">▶︎</button>
+            </div>
+
+            <div class="media-meta" id="media-meta" style="display:none;">
+              <div class="dots" id="dots"></div>
+              <div class="thumbs" id="thumbs"></div>
+              <a class="video-link" id="video-link" target="_blank" rel="noopener noreferrer" style="display:none;">
+                動画を別タブで開く
+              </a>
             </div>
           </div>
 
@@ -181,30 +301,30 @@
         <div class="section">
           <div class="step-label">STEP 2.5</div>
           <div class="section-title">文章・画像を微調整（再生成）</div>
-        
+
           <!-- ========== テキスト調整 ========== -->
           <div class="subbox">
             <div class="subbox-title">📝 文章・ハッシュタグ</div>
             <div class="chip-grid">
               <button class="chip" data-action="shorter_text" type="button" disabled>✂ 短く</button>
               <button class="chip" data-action="longer_text" type="button" disabled>📝 長く</button>
-        
+
               <button class="chip" data-action="less_emoji" type="button" disabled>😶 絵文字↓</button>
               <button class="chip" data-action="more_emoji" type="button" disabled>😃 絵文字↑</button>
-        
+
               <button class="chip" data-action="softer_tone" type="button" disabled>✏️ やわらかく</button>
               <button class="chip" data-action="more_formal" type="button" disabled>🧑‍💼 丁寧に</button>
               <button class="chip" data-action="more_friendly" type="button" disabled>😊 親しみ</button>
-        
+
               <button class="chip" data-action="adjust_hashtags" type="button" disabled>#️⃣ タグ調整</button>
             </div>
             <div class="hint-small">文章・# はすぐ反映されます。</div>
           </div>
-        
+
           <!-- ========== 画像/動画調整 ========== -->
           <div class="subbox">
             <div class="subbox-title">🖼 画像・動画（リール）</div>
-        
+
             <div class="subbox-subtitle">被写体</div>
             <div class="chip-grid">
               <button class="chip" data-action="img_subject_food" type="button" disabled>🍽 料理</button>
@@ -212,7 +332,7 @@
               <button class="chip" data-action="img_subject_interior" type="button" disabled>🏠 店内</button>
               <button class="chip" data-action="img_subject_staff" type="button" disabled>🙂 スタッフ</button>
             </div>
-        
+
             <div class="subbox-subtitle">構図</div>
             <div class="chip-grid">
               <button class="chip" data-action="img_shot_closeup" type="button" disabled>🔍 寄る</button>
@@ -220,7 +340,7 @@
               <button class="chip" data-action="img_angle_change" type="button" disabled>📐 角度</button>
               <button class="chip" data-action="img_clean_background" type="button" disabled>🧼 背景</button>
             </div>
-        
+
             <div class="subbox-subtitle">雰囲気</div>
             <div class="chip-grid">
               <button class="chip" data-action="img_mood_bright" type="button" disabled>☀️ 明るく</button>
@@ -228,25 +348,24 @@
               <button class="chip" data-action="img_mood_luxury" type="button" disabled>✨ 高級感</button>
               <button class="chip" data-action="img_mood_pop" type="button" disabled>📸 映え</button>
             </div>
-        
+
             <div class="subbox-subtitle">テロップ</div>
             <div class="chip-grid">
               <button class="chip" data-action="img_text_on" type="button" disabled>🏷 有</button>
               <button class="chip" data-action="img_text_off" type="button" disabled>🚫 無</button>
               <button class="chip" data-action="img_variation" type="button" disabled>🎲 別案</button>
             </div>
-        
+
             <div class="hint-small">画像/動画は生成に数秒かかります。</div>
           </div>
-        
+
           <!-- OK -->
           <div class="chip-grid" style="margin-top: 10px;">
             <button class="chip chip-ok" id="ok-btn" type="button" disabled>✅ これでOK</button>
           </div>
-        
+
           <div class="hint-small">ボタンを押すと数秒後にキャプション/画像が更新されます。</div>
         </div>
-
 
         <!-- STEP 3: Instagram を開く -->
         <div class="section">
@@ -285,13 +404,28 @@
       const captionEl = document.getElementById("caption");
       const hashtagsEl = document.getElementById("hashtags");
       const errorEl = document.getElementById("error");
-      const mediaEl = document.getElementById("media");
       const copyBtn = document.getElementById("copy-btn");
       const openInstagramBtn = document.getElementById("open-instagram");
       const openImageBtn = document.getElementById("open-image-btn");
       const imageHintEl = document.getElementById("image-hint");
 
-      let currentMediaUrl = null;
+      // media UI elements
+      const mediaImg = document.getElementById("media-img");
+      const mediaPlaceholder = document.getElementById("media-placeholder");
+      const mediaMeta = document.getElementById("media-meta");
+      const navPrev = document.getElementById("nav-prev");
+      const navNext = document.getElementById("nav-next");
+      const dotsEl = document.getElementById("dots");
+      const thumbsEl = document.getElementById("thumbs");
+      const videoPlayBtn = document.getElementById("video-play");
+      const videoLink = document.getElementById("video-link");
+
+      // ===== Media state =====
+      let MEDIA_URLS = [];
+      let MEDIA_INDEX = 0;
+      let VIDEO_URL = null;
+      let VIDEO_THUMB = null;
+      let currentOpenableUrl = null; // "画像を保存用に開く" が開くURL（現在表示中の画像）
 
       function normalizeHashtags(hashtagsArr) {
         return (hashtagsArr || [])
@@ -316,39 +450,147 @@
         });
       }
 
-      // ✅ キャッシュ対策（画像が更新されない問題の本丸）
+      // ✅ キャッシュ対策（画像差し替えの確実化）
       function withCacheBust(url) {
         if (!url) return url;
         const sep = url.includes("?") ? "&" : "?";
         return `${url}${sep}t=${Date.now()}`;
       }
 
-      // ✅ 画像描画を関数化：初回ロードでも、ボタン押下後でも、同じ処理で更新
-      function renderMedia(url) {
-        currentMediaUrl = url || null;
+      // ===== Carousel/Video rendering =====
+      function setMediaMode({ kind, urls = [], videoUrl = null, videoThumb = null }) {
+        // reset
+        MEDIA_URLS = [];
+        MEDIA_INDEX = 0;
+        VIDEO_URL = null;
+        VIDEO_THUMB = null;
+        currentOpenableUrl = null;
 
-        if (currentMediaUrl) {
-          const img = document.createElement("img");
-          img.src = withCacheBust(currentMediaUrl);
-          img.alt = "プレビュー画像";
+        // hide controls
+        navPrev.style.display = "none";
+        navNext.style.display = "none";
+        dotsEl.innerHTML = "";
+        thumbsEl.innerHTML = "";
+        videoPlayBtn.style.display = "none";
+        videoLink.style.display = "none";
+        videoLink.removeAttribute("href");
 
-          mediaEl.innerHTML = "";
-          mediaEl.appendChild(img);
+        mediaMeta.style.display = "none";
+        mediaImg.style.display = "none";
+        mediaPlaceholder.style.display = "block";
+
+        openImageBtn.disabled = true;
+        imageHintEl.style.display = "none";
+
+        if (kind === "video") {
+          VIDEO_URL = videoUrl || null;
+          VIDEO_THUMB = videoThumb || null;
+
+          if (VIDEO_THUMB) {
+            mediaPlaceholder.style.display = "none";
+            mediaImg.style.display = "block";
+            mediaImg.src = withCacheBust(VIDEO_THUMB);
+            currentOpenableUrl = VIDEO_THUMB; // 「保存用に開く」はサムネを開く
+            openImageBtn.disabled = false;
+            imageHintEl.style.display = "block";
+          }
+
+          // play UI（ページ内再生はしない）
+          videoPlayBtn.style.display = "inline-flex";
+          mediaMeta.style.display = "block";
+
+          if (VIDEO_URL) {
+            videoLink.href = VIDEO_URL;
+            videoLink.style.display = "block";
+          }
+          return;
+        }
+
+        // image / carousel
+        MEDIA_URLS = Array.isArray(urls) ? urls.filter(Boolean) : [];
+        if (MEDIA_URLS.length === 0) {
+          return;
+        }
+
+        mediaPlaceholder.style.display = "none";
+        mediaImg.style.display = "block";
+        mediaMeta.style.display = "block";
+
+        if (MEDIA_URLS.length === 1) {
+          mediaImg.src = withCacheBust(MEDIA_URLS[0]);
+          currentOpenableUrl = MEDIA_URLS[0];
 
           openImageBtn.disabled = false;
           imageHintEl.style.display = "block";
-        } else {
-          mediaEl.innerHTML = "";
-          const ph = document.createElement("div");
-          ph.className = "media-placeholder";
-          ph.textContent = "画像URLがまだ設定されていません。";
-          mediaEl.appendChild(ph);
 
-          openImageBtn.disabled = true;
-          imageHintEl.style.display = "none";
+          // 余計なUIは非表示
+          dotsEl.innerHTML = "";
+          thumbsEl.innerHTML = "";
+          return;
+        }
+
+        // carousel
+        navPrev.style.display = "inline-flex";
+        navNext.style.display = "inline-flex";
+
+        renderCarouselUI();
+        showCarouselIndex(0);
+
+        openImageBtn.disabled = false;
+        imageHintEl.style.display = "block";
+      }
+
+      function renderCarouselUI() {
+        dotsEl.innerHTML = MEDIA_URLS.map((_, i) =>
+          `<div class="dot ${i === MEDIA_INDEX ? "active" : ""}" data-i="${i}"></div>`
+        ).join("");
+
+        thumbsEl.innerHTML = MEDIA_URLS.map((u, i) => `
+          <div class="thumb ${i === MEDIA_INDEX ? "active" : ""}" data-i="${i}">
+            <img src="${escapeAttr(withCacheBust(u))}" alt="thumb${i}" loading="lazy" />
+          </div>
+        `).join("");
+
+        dotsEl.querySelectorAll(".dot").forEach((el) => {
+          el.addEventListener("click", () => showCarouselIndex(Number(el.dataset.i)));
+        });
+        thumbsEl.querySelectorAll(".thumb").forEach((el) => {
+          el.addEventListener("click", () => showCarouselIndex(Number(el.dataset.i)));
+        });
+      }
+
+      function showCarouselIndex(i) {
+        if (!MEDIA_URLS.length) return;
+        MEDIA_INDEX = Math.max(0, Math.min(i, MEDIA_URLS.length - 1));
+        const url = MEDIA_URLS[MEDIA_INDEX];
+
+        mediaImg.src = withCacheBust(url);
+        currentOpenableUrl = url;
+
+        dotsEl.querySelectorAll(".dot").forEach((d, idx) => d.classList.toggle("active", idx === MEDIA_INDEX));
+        thumbsEl.querySelectorAll(".thumb").forEach((t, idx) => t.classList.toggle("active", idx === MEDIA_INDEX));
+
+        // prefetch next image
+        const next = MEDIA_URLS[MEDIA_INDEX + 1];
+        if (next) {
+          const img = new Image();
+          img.src = withCacheBust(next);
         }
       }
 
+      navPrev.addEventListener("click", () => showCarouselIndex(MEDIA_INDEX - 1));
+      navNext.addEventListener("click", () => showCarouselIndex(MEDIA_INDEX + 1));
+
+      videoPlayBtn.addEventListener("click", () => {
+        if (VIDEO_URL) window.open(VIDEO_URL, "_blank", "noopener");
+        else alert("動画URLがまだありません（生成中/未作成）");
+      });
+
+      function escapeAttr(s) {
+        return String(s).replace(/"/g, "&quot;");
+      }
+
+      // ====== Boot ======
       if (!planId) {
         captionEl.textContent = "";
         errorEl.style.display = "block";
@@ -370,7 +612,7 @@
           // plans を取得
           const { data: plan, error } = await client
             .from("sns_post_plans")
-            .select("plan_id, store_id, platform, scheduled_at, caption, hashtags, media_id")
+            .select("plan_id, store_id, platform, scheduled_at, caption, hashtags, media_id, media_kind")
             .eq("plan_id", planId)
             .maybeSingle();
 
@@ -378,22 +620,45 @@
           if (!plan) throw new Error("plan が見つかりません");
 
           metaEl.textContent = `store: ${plan.store_id} / ${plan.platform} / ${plan.scheduled_at}`;
-
           renderCaptionAndHashtags(plan.caption, plan.hashtags);
 
-          // 画像URL（優先: plan.media_public_url / 次: media_id→assets）
+          // まずは media_id → sns_media_assets → publicURL で1枚表示（MVP）
           let finalMediaUrl = null;
 
-          if (!finalMediaUrl && plan.media_id) {
+          if (plan.media_id) {
             const { data: asset, error: assetError } = await client
               .from("sns_media_assets")
-              .select("storage_bucket, storage_key")
+              .select("storage_bucket, storage_key, public_url, media_urls, video_public_url, video_thumbnail_url")
               .eq("media_id", plan.media_id)
               .maybeSingle();
 
             if (assetError) console.error("assetError", assetError);
 
-            if (asset && asset.storage_bucket && asset.storage_key) {
+            // カルーセル（media_urlsがあれば優先）
+            if (asset && Array.isArray(asset.media_urls) && asset.media_urls.length) {
+              setMediaMode({ kind: "carousel", urls: asset.media_urls });
+              setFeedbackButtonsEnabled(true);
+              return;
+            }
+
+            // 動画（video_thumbnail_urlがあれば軽量表示）
+            if (asset && (asset.video_thumbnail_url || asset.video_public_url)) {
+              setMediaMode({
+                kind: "video",
+                videoUrl: asset.video_public_url || null,
+                videoThumb: asset.video_thumbnail_url || null,
+              });
+              setFeedbackButtonsEnabled(true);
+              return;
+            }
+
+            // public_urlがあれば使う（あれば一番ラク）
+            if (asset && asset.public_url) {
+              finalMediaUrl = asset.public_url;
+            }
+
+            // storage_bucket/key から publicUrl を作る
+            if (!finalMediaUrl && asset && asset.storage_bucket && asset.storage_key) {
               const { data: publicUrlData } = client.storage
                 .from(asset.storage_bucket)
                 .getPublicUrl(asset.storage_key);
@@ -404,15 +669,19 @@
             }
           }
 
-          renderMedia(finalMediaUrl);
+          if (finalMediaUrl) {
+            setMediaMode({ kind: "image", urls: [finalMediaUrl] });
+          } else {
+            setMediaMode({ kind: "image", urls: [] });
+          }
 
-          // ✅ planが読めたらボタンON
           setFeedbackButtonsEnabled(true);
         } catch (e) {
           console.error(e);
           captionEl.textContent = "";
           errorEl.style.display = "block";
-          errorEl.textContent = "予期しないエラーが発生しました。";
+          // デバッグしやすいように messageも出す
+          errorEl.textContent = `予期しないエラーが発生しました: ${e?.message || e}`;
           copyBtn.disabled = true;
           openImageBtn.disabled = true;
           setFeedbackButtonsEnabled(false);
@@ -434,15 +703,14 @@
         }
       });
 
-      // STEP1: 画像を保存用に開く（常に「最新のURL」を開く）
+      // STEP1: 画像を保存用に開く（今表示中の画像を開く）
       openImageBtn.addEventListener("click", () => {
-        if (!currentMediaUrl) return;
-        window.open(withCacheBust(currentMediaUrl), "_blank");
+        if (!currentOpenableUrl) return;
+        window.open(withCacheBust(currentOpenableUrl), "_blank");
       });
 
       // STEP3: Instagram
       openInstagramBtn.addEventListener("click", () => {
-        // iOS/Androidでの挙動は端末依存。まずはWebを開くMVP。
         window.open("https://www.instagram.com/", "_blank");
       });
 
@@ -459,11 +727,42 @@
           }),
         });
 
-        const json = await res.json();
+        const text = await res.text();
+        let json = null;
+        try { json = text ? JSON.parse(text) : null; } catch (_) {}
+
         if (!res.ok) {
-          throw new Error(json?.error || json?.message || "feedback failed");
+          // errorの中身を見える化
+          const msg = (json && (json.error || json.message || json.detail)) ? (json.error || json.message || json.detail) : text || "feedback failed";
+          throw new Error(msg);
         }
-        return json; // { caption, hashtags, media_public_url, ... }
+        return json || {};
+      }
+
+      function applyMediaFromResponse(out) {
+        // 1) カルーセル（Edge Functionがmedia_urlsを返す場合）
+        if (Array.isArray(out.media_urls) && out.media_urls.length) {
+          setMediaMode({ kind: "carousel", urls: out.media_urls });
+          return;
+        }
+
+        // 2) 動画（軽量：サムネ＋別タブ再生）
+        if (out.video_thumbnail_url || out.video_public_url) {
+          setMediaMode({
+            kind: "video",
+            videoUrl: out.video_public_url || null,
+            videoThumb: out.video_thumbnail_url || null,
+          });
+          return;
+        }
+
+        // 3) 1枚（今のあなたのEdge Functionが返している）
+        if (out.media_public_url) {
+          setMediaMode({ kind: "image", urls: [out.media_public_url] });
+          return;
+        }
+
+        // 4) 何も返らない場合は現状維持
       }
 
       // ✅ 全ボタン共通ハンドラ（data-action）
@@ -482,13 +781,13 @@
 
             const out = await callFeedback(action);
 
-            // テキストは常に即反映
-            renderCaptionAndHashtags(out.caption, out.hashtags);
-
-            // ✅ 画像が返ってきた時は、その場で差し替え（ここが今回のキモ）
-            if (out.media_public_url) {
-              renderMedia(out.media_public_url);
+            // テキスト
+            if (out.caption || out.hashtags) {
+              renderCaptionAndHashtags(out.caption, out.hashtags);
             }
+
+            // 画像/カルーセル/動画
+            applyMediaFromResponse(out);
 
             btn.textContent = prevText;
             setFeedbackButtonsEnabled(true);
