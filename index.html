@@ -329,7 +329,7 @@
           // plans を取得
           const { data: plan, error } = await client
             .from("sns_post_plans")
-            .select("plan_id, store_id, platform, scheduled_at, caption, hashtags, media_id, media_public_url")
+            .select("plan_id, store_id, platform, scheduled_at, caption, hashtags, media_id")
             .eq("plan_id", planId)
             .maybeSingle();
 
@@ -341,7 +341,7 @@
           renderCaptionAndHashtags(plan.caption, plan.hashtags);
 
           // 画像URL（優先: plan.media_public_url / 次: media_id→assets）
-          let finalMediaUrl = plan.media_public_url || null;
+          let finalMediaUrl = null;
 
           if (!finalMediaUrl && plan.media_id) {
             const { data: asset, error: assetError } = await client
