@@ -188,7 +188,7 @@
 
       .hint { margin-top: 10px; font-size: 11px; color: #777; }
       .hint-small { margin-top: 6px; font-size: 11px; color: #888; }
-      .error { margin-top: 12px; font-size: 13px; color: #c62828; }
+      .error { margin-top: 12px; font-size: 13px; color: #c62828; white-space: pre-wrap; }
       .loading { font-size: 13px; color: #555; }
 
       /* === STEP 2.5 チップUI === */
@@ -346,7 +346,8 @@
               <button class="chip" data-action="img_mood_bright" type="button" disabled>☀️ 明るく</button>
               <button class="chip" data-action="img_mood_calm" type="button" disabled>🌙 落ち着き</button>
               <button class="chip" data-action="img_mood_luxury" type="button" disabled>✨ 高級感</button>
-              <button class="chip" data-action="img_mood_pop" type="button" disabled>📸 映え</button>
+              <!-- ★ここだけ統一：img_mood_pop → img_mood_trendy -->
+              <button class="chip" data-action="img_mood_trendy" type="button" disabled>📸 映え</button>
             </div>
 
             <div class="subbox-subtitle">テロップ</div>
@@ -425,7 +426,7 @@
       let MEDIA_INDEX = 0;
       let VIDEO_URL = null;
       let VIDEO_THUMB = null;
-      let currentOpenableUrl = null; // "画像を保存用に開く" が開くURL（現在表示中の画像）
+      let currentOpenableUrl = null;
 
       function normalizeHashtags(hashtagsArr) {
         return (hashtagsArr || [])
@@ -439,7 +440,6 @@
         captionEl.textContent = caption || "キャプションが未設定です。";
         const hashtags = normalizeHashtags(hashtagsArr);
         hashtagsEl.textContent = hashtags;
-
         const fullText = `${captionEl.textContent}\n\n${hashtags}`;
         copyBtn.dataset.fulltext = fullText;
       }
@@ -450,23 +450,50 @@
         });
       }
 
-      // ✅ キャッシュ対策（画像差し替えの確実化）
+      // キャッシュ対策
       function withCacheBust(url) {
         if (!url) return url;
         const sep = url.includes("?") ? "&" : "?";
         return `${url}${sep}t=${Date.now()}`;
       }
 
+      // ===== 追加：fetchWithRetry（502/503/504対策） =====
+      async function fetchWithRetry(
+        url,
+        init,
+        opts = {}
+      ) {
+        const retries = opts.retries ?? 3;
+        const baseDelayMs = opts.baseDelayMs ?? 600;
+        const retryOn = new Set(opts.retryOn ?? [429, 500, 502, 503, 504]);
+
+        let lastText = "";
+        for (let i = 0; i <= retries; i++) {
+          const res = await fetch(url, init);
+          if (res.ok) return res;
+
+          const status = res.status;
+          lastText = await res.text().catch(() => "");
+
+          if (!retryOn.has(status) || i === retries) {
+            // 最終失敗：呼び出し元が読める形で返す
+            return new Response(lastText, { status, headers: res.headers });
+          }
+
+          const wait = baseDelayMs * Math.pow(2, i) + Math.floor(Math.random() * 250);
+          await new Promise((r) => setTimeout(r, wait));
+        }
+        throw new Error(lastText || "fetchWithRetry failed");
+      }
+
       // ===== Carousel/Video rendering =====
       function setMediaMode({ kind, urls = [], videoUrl = null, videoThumb = null }) {
-        // reset
         MEDIA_URLS = [];
         MEDIA_INDEX = 0;
         VIDEO_URL = null;
         VIDEO_THUMB = null;
         currentOpenableUrl = null;
 
-        // hide controls
         navPrev.style.display = "none";
         navNext.style.display = "none";
         dotsEl.innerHTML = "";
@@ -490,12 +517,11 @@
             mediaPlaceholder.style.display = "none";
             mediaImg.style.display = "block";
             mediaImg.src = withCacheBust(VIDEO_THUMB);
-            currentOpenableUrl = VIDEO_THUMB; // 「保存用に開く」はサムネを開く
+            currentOpenableUrl = VIDEO_THUMB;
             openImageBtn.disabled = false;
             imageHintEl.style.display = "block";
           }
 
-          // play UI（ページ内再生はしない）
           videoPlayBtn.style.display = "inline-flex";
           mediaMeta.style.display = "block";
 
@@ -506,11 +532,8 @@
           return;
         }
 
-        // image / carousel
         MEDIA_URLS = Array.isArray(urls) ? urls.filter(Boolean) : [];
-        if (MEDIA_URLS.length === 0) {
-          return;
-        }
+        if (MEDIA_URLS.length === 0) return;
 
         mediaPlaceholder.style.display = "none";
         mediaImg.style.display = "block";
@@ -519,17 +542,13 @@
         if (MEDIA_URLS.length === 1) {
           mediaImg.src = withCacheBust(MEDIA_URLS[0]);
           currentOpenableUrl = MEDIA_URLS[0];
-
           openImageBtn.disabled = false;
           imageHintEl.style.display = "block";
-
-          // 余計なUIは非表示
           dotsEl.innerHTML = "";
           thumbsEl.innerHTML = "";
           return;
         }
 
-        // carousel
         navPrev.style.display = "inline-flex";
         navNext.style.display = "inline-flex";
 
@@ -570,7 +589,6 @@
         dotsEl.querySelectorAll(".dot").forEach((d, idx) => d.classList.toggle("active", idx === MEDIA_INDEX));
         thumbsEl.querySelectorAll(".thumb").forEach((t, idx) => t.classList.toggle("active", idx === MEDIA_INDEX));
 
-        // prefetch next image
         const next = MEDIA_URLS[MEDIA_INDEX + 1];
         if (next) {
           const img = new Image();
@@ -608,8 +626,8 @@
           captionEl.textContent = "読み込み中...";
           hashtagsEl.textContent = "";
           errorEl.style.display = "none";
+          errorEl.textContent = "";
 
-          // plans を取得
           const { data: plan, error } = await client
             .from("sns_post_plans")
             .select("plan_id, store_id, platform, scheduled_at, caption, hashtags, media_id, media_kind")
@@ -622,7 +640,6 @@
           metaEl.textContent = `store: ${plan.store_id} / ${plan.platform} / ${plan.scheduled_at}`;
           renderCaptionAndHashtags(plan.caption, plan.hashtags);
 
-          // まずは media_id → sns_media_assets → publicURL で1枚表示（MVP）
           let finalMediaUrl = null;
 
           if (plan.media_id) {
@@ -634,14 +651,12 @@
 
             if (assetError) console.error("assetError", assetError);
 
-            // カルーセル（media_urlsがあれば優先）
             if (asset && Array.isArray(asset.media_urls) && asset.media_urls.length) {
               setMediaMode({ kind: "carousel", urls: asset.media_urls });
               setFeedbackButtonsEnabled(true);
               return;
             }
 
-            // 動画（video_thumbnail_urlがあれば軽量表示）
             if (asset && (asset.video_thumbnail_url || asset.video_public_url)) {
               setMediaMode({
                 kind: "video",
@@ -652,12 +667,8 @@
               return;
             }
 
-            // public_urlがあれば使う（あれば一番ラク）
-            if (asset && asset.public_url) {
-              finalMediaUrl = asset.public_url;
-            }
+            if (asset && asset.public_url) finalMediaUrl = asset.public_url;
 
-            // storage_bucket/key から publicUrl を作る
             if (!finalMediaUrl && asset && asset.storage_bucket && asset.storage_key) {
               const { data: publicUrlData } = client.storage
                 .from(asset.storage_bucket)
@@ -669,19 +680,15 @@
             }
           }
 
-          if (finalMediaUrl) {
-            setMediaMode({ kind: "image", urls: [finalMediaUrl] });
-          } else {
-            setMediaMode({ kind: "image", urls: [] });
-          }
+          if (finalMediaUrl) setMediaMode({ kind: "image", urls: [finalMediaUrl] });
+          else setMediaMode({ kind: "image", urls: [] });
 
           setFeedbackButtonsEnabled(true);
         } catch (e) {
           console.error(e);
           captionEl.textContent = "";
           errorEl.style.display = "block";
-          // デバッグしやすいように messageも出す
-          errorEl.textContent = `予期しないエラーが発生しました: ${e?.message || e}`;
+          errorEl.textContent = `予期しないエラーが発生しました:\n${e?.message || e}`;
           copyBtn.disabled = true;
           openImageBtn.disabled = true;
           setFeedbackButtonsEnabled(false);
@@ -703,7 +710,7 @@
         }
       });
 
-      // STEP1: 画像を保存用に開く（今表示中の画像を開く）
+      // STEP1: 画像を保存用に開く
       openImageBtn.addEventListener("click", () => {
         if (!currentOpenableUrl) return;
         window.open(withCacheBust(currentOpenableUrl), "_blank");
@@ -714,17 +721,15 @@
         window.open("https://www.instagram.com/", "_blank");
       });
 
+      // ★ここを fetchWithRetry に変更（OpenAI 502対策）
       async function callFeedback(action) {
-        const res = await fetch(`${FUNCTIONS_BASE_URL}/sns-preview-feedback`, {
+        const res = await fetchWithRetry(`${FUNCTIONS_BASE_URL}/sns-preview-feedback`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
           },
-          body: JSON.stringify({
-            plan_id: planId,
-            action,
-          }),
+          body: JSON.stringify({ plan_id: planId, action }),
         });
 
         const text = await res.text();
@@ -732,21 +737,22 @@
         try { json = text ? JSON.parse(text) : null; } catch (_) {}
 
         if (!res.ok) {
-          // errorの中身を見える化
-          const msg = (json && (json.error || json.message || json.detail)) ? (json.error || json.message || json.detail) : text || "feedback failed";
+          const msg = (json && (json.error || json.message || json.detail))
+            ? (json.error || json.message || json.detail)
+            : (text || "feedback failed");
+          // 画面にも残す（原因切り分け用）
+          errorEl.style.display = "block";
+          errorEl.textContent = `再生成エラー:\naction=${action}\n${msg}`;
           throw new Error(msg);
         }
         return json || {};
       }
 
       function applyMediaFromResponse(out) {
-        // 1) カルーセル（Edge Functionがmedia_urlsを返す場合）
         if (Array.isArray(out.media_urls) && out.media_urls.length) {
           setMediaMode({ kind: "carousel", urls: out.media_urls });
           return;
         }
-
-        // 2) 動画（軽量：サムネ＋別タブ再生）
         if (out.video_thumbnail_url || out.video_public_url) {
           setMediaMode({
             kind: "video",
@@ -755,38 +761,32 @@
           });
           return;
         }
-
-        // 3) 1枚（今のあなたのEdge Functionが返している）
         if (out.media_public_url) {
           setMediaMode({ kind: "image", urls: [out.media_public_url] });
           return;
         }
-
-        // 4) 何も返らない場合は現状維持
       }
 
-      // ✅ 全ボタン共通ハンドラ（data-action）
       document.querySelectorAll("button[data-action]").forEach((btn) => {
         btn.addEventListener("click", async () => {
           if (!planId) return;
-
           const action = btn.dataset.action;
           if (!action) return;
 
           const prevText = btn.textContent;
 
           try {
+            errorEl.style.display = "none";
+            errorEl.textContent = "";
+
             setFeedbackButtonsEnabled(false);
             btn.textContent = "生成中...";
 
             const out = await callFeedback(action);
 
-            // テキスト
             if (out.caption || out.hashtags) {
               renderCaptionAndHashtags(out.caption, out.hashtags);
             }
-
-            // 画像/カルーセル/動画
             applyMediaFromResponse(out);
 
             btn.textContent = prevText;
@@ -800,7 +800,6 @@
         });
       });
 
-      // OKボタン
       document.getElementById("ok-btn").addEventListener("click", () => {
         alert("OKとして確定（次はここでステータス更新などを実装できます）");
       });
