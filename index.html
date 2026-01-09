@@ -110,6 +110,27 @@
         background: #f2fbf5;
         font-weight: 600;
       }
+      .subbox{
+        margin-top:12px;
+        padding:12px;
+        border:1px solid #eee;
+        border-radius:14px;
+        background:#fafafa;
+      }
+      .subbox-title{
+        font-size:13px;
+        font-weight:700;
+        margin-bottom:10px;
+        color:#333;
+      }
+      .subbox-subtitle{
+        margin-top:10px;
+        margin-bottom:6px;
+        font-size:12px;
+        font-weight:600;
+        color:#666;
+      }
+
     </style>
 
     <!-- supabase-js v2 -->
@@ -160,52 +181,72 @@
         <div class="section">
           <div class="step-label">STEP 2.5</div>
           <div class="section-title">文章・画像を微調整（再生成）</div>
-
-          <div class="chip-grid" style="margin-top:10px;">
-            <!-- テキスト系 -->
-            <button class="chip" data-action="shorter_text" type="button" disabled>✂ 短く</button>
-            <button class="chip" data-action="longer_text" type="button" disabled>📝 長く</button>
-
-            <button class="chip" data-action="less_emoji" type="button" disabled>😶 絵文字↓</button>
-            <button class="chip" data-action="more_emoji" type="button" disabled>😃 絵文字↑</button>
-
-            <button class="chip" data-action="softer_tone" type="button" disabled>✏️ やわらかく</button>
-            <button class="chip" data-action="more_formal" type="button" disabled>🧑‍💼 丁寧に</button>
-            <button class="chip" data-action="more_friendly" type="button" disabled>😊 親しみ</button>
-
-            <button class="chip" data-action="adjust_hashtags" type="button" disabled>#️⃣ タグ調整</button>
-
-            <!-- 画像：被写体 -->
-            <button class="chip" data-action="img_subject_food" type="button" disabled>🍽 料理メイン</button>
-            <button class="chip" data-action="img_subject_drink" type="button" disabled>🍻 ドリンクメイン</button>
-            <button class="chip" data-action="img_subject_interior" type="button" disabled>🏠 店内メイン</button>
-            <button class="chip" data-action="img_subject_staff" type="button" disabled>🙂 スタッフ感</button>
-
-            <!-- 画像：構図 -->
-            <button class="chip" data-action="img_shot_closeup" type="button" disabled>🔍 もっと寄る</button>
-            <button class="chip" data-action="img_shot_wide" type="button" disabled>🧭 もっと引く</button>
-            <button class="chip" data-action="img_angle_change" type="button" disabled>📐 角度変更</button>
-            <button class="chip" data-action="img_clean_background" type="button" disabled>🧼 背景すっきり</button>
-
-            <!-- 画像：雰囲気 -->
-            <button class="chip" data-action="img_mood_bright" type="button" disabled>☀️ 明るく</button>
-            <button class="chip" data-action="img_mood_calm" type="button" disabled>🌙 落ち着き</button>
-            <button class="chip" data-action="img_mood_luxury" type="button" disabled>✨ 高級感</button>
-            <button class="chip" data-action="img_mood_pop" type="button" disabled>📸 映え</button>
-
-            <!-- 画像：テキスト -->
-            <button class="chip" data-action="img_text_on" type="button" disabled>🏷 テロップ有</button>
-            <button class="chip" data-action="img_text_off" type="button" disabled>🚫 テロップ無</button>
-
-            <!-- 画像：揺らぎ -->
-            <button class="chip" data-action="img_variation" type="button" disabled>🎲 別案</button>
-
-            <!-- OK -->
+        
+          <!-- ========== テキスト調整 ========== -->
+          <div class="subbox">
+            <div class="subbox-title">📝 文章・ハッシュタグ</div>
+            <div class="chip-grid">
+              <button class="chip" data-action="shorter_text" type="button" disabled>✂ 短く</button>
+              <button class="chip" data-action="longer_text" type="button" disabled>📝 長く</button>
+        
+              <button class="chip" data-action="less_emoji" type="button" disabled>😶 絵文字↓</button>
+              <button class="chip" data-action="more_emoji" type="button" disabled>😃 絵文字↑</button>
+        
+              <button class="chip" data-action="softer_tone" type="button" disabled>✏️ やわらかく</button>
+              <button class="chip" data-action="more_formal" type="button" disabled>🧑‍💼 丁寧に</button>
+              <button class="chip" data-action="more_friendly" type="button" disabled>😊 親しみ</button>
+        
+              <button class="chip" data-action="adjust_hashtags" type="button" disabled>#️⃣ タグ調整</button>
+            </div>
+            <div class="hint-small">文章・# はすぐ反映されます。</div>
+          </div>
+        
+          <!-- ========== 画像/動画調整 ========== -->
+          <div class="subbox">
+            <div class="subbox-title">🖼 画像・動画（リール）</div>
+        
+            <div class="subbox-subtitle">被写体</div>
+            <div class="chip-grid">
+              <button class="chip" data-action="img_subject_food" type="button" disabled>🍽 料理</button>
+              <button class="chip" data-action="img_subject_drink" type="button" disabled>🍻 ドリンク</button>
+              <button class="chip" data-action="img_subject_interior" type="button" disabled>🏠 店内</button>
+              <button class="chip" data-action="img_subject_staff" type="button" disabled>🙂 スタッフ</button>
+            </div>
+        
+            <div class="subbox-subtitle">構図</div>
+            <div class="chip-grid">
+              <button class="chip" data-action="img_shot_closeup" type="button" disabled>🔍 寄る</button>
+              <button class="chip" data-action="img_shot_wide" type="button" disabled>🧭 引く</button>
+              <button class="chip" data-action="img_angle_change" type="button" disabled>📐 角度</button>
+              <button class="chip" data-action="img_clean_background" type="button" disabled>🧼 背景</button>
+            </div>
+        
+            <div class="subbox-subtitle">雰囲気</div>
+            <div class="chip-grid">
+              <button class="chip" data-action="img_mood_bright" type="button" disabled>☀️ 明るく</button>
+              <button class="chip" data-action="img_mood_calm" type="button" disabled>🌙 落ち着き</button>
+              <button class="chip" data-action="img_mood_luxury" type="button" disabled>✨ 高級感</button>
+              <button class="chip" data-action="img_mood_pop" type="button" disabled>📸 映え</button>
+            </div>
+        
+            <div class="subbox-subtitle">テロップ</div>
+            <div class="chip-grid">
+              <button class="chip" data-action="img_text_on" type="button" disabled>🏷 有</button>
+              <button class="chip" data-action="img_text_off" type="button" disabled>🚫 無</button>
+              <button class="chip" data-action="img_variation" type="button" disabled>🎲 別案</button>
+            </div>
+        
+            <div class="hint-small">画像/動画は生成に数秒かかります。</div>
+          </div>
+        
+          <!-- OK -->
+          <div class="chip-grid" style="margin-top: 10px;">
             <button class="chip chip-ok" id="ok-btn" type="button" disabled>✅ これでOK</button>
           </div>
-
+        
           <div class="hint-small">ボタンを押すと数秒後にキャプション/画像が更新されます。</div>
         </div>
+
 
         <!-- STEP 3: Instagram を開く -->
         <div class="section">
