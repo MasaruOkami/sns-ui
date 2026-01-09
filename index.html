@@ -2,561 +2,541 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SNS 投稿プレビュー</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+    <!-- supabase-js (UMD) -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
     <style>
+      :root {
+        --bg: #f7f7fb;
+        --card: #ffffff;
+        --text: #111827;
+        --muted: #6b7280;
+        --line: #e5e7eb;
+        --accent1: #f97316;
+        --accent2: #ec4899;
+        --okbg: #e8f7ea;
+        --okline: #a7e0af;
+      }
+      * { box-sizing: border-box; }
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial,
-          "YuGothic", "游ゴシック体", sans-serif;
         margin: 0;
-        padding: 16px;
-        background: #f5f5f7;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
       }
-      .container { max-width: 560px; margin: 0 auto; }
+      .wrap { max-width: 820px; margin: 0 auto; padding: 18px 14px 40px; }
       .card {
-        background: #fff;
-        border-radius: 16px;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
-        padding: 16px;
+        background: var(--card);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 10px 30px rgba(0,0,0,.06);
       }
-      .title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-      .meta { font-size: 12px; color: #777; margin-bottom: 16px; }
+      h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: .02em; }
+      .meta { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
 
-      .section { margin-top: 16px; }
-      .step-label {
-        font-size: 11px;
-        font-weight: 700;
-        color: #ff6a3d;
-        letter-spacing: 0.08em;
+      .stepLabel {
+        font-size: 14px;
+        letter-spacing: .14em;
+        font-weight: 800;
+        color: var(--accent1);
+        margin: 18px 0 6px;
         text-transform: uppercase;
-        margin-bottom: 4px;
       }
-      .section-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+      .stepTitle { margin: 0 0 10px; font-size: 22px; font-weight: 900; }
 
-      /* ====== Media (Carousel/Video) ====== */
-      .media-box{
+      /* Media area */
+      .mediaBox {
+        border-radius: 18px;
+        background: #0b0b10;
+        overflow: hidden;
+        position: relative;
+        min-height: 240px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .mediaBox img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .mediaPlaceholder {
+        color: rgba(255,255,255,.7);
+        text-align: center;
+        padding: 16px;
+        line-height: 1.6;
+      }
+
+      .mediaControlsRow {
+        margin-top: 10px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .pillBtn {
+        border: 1px solid var(--line);
+        background: #fff;
+        padding: 14px 18px;
+        border-radius: 999px;
+        font-size: 15px;
+        font-weight: 800;
+        cursor: pointer;
+        box-shadow: 0 2px 0 rgba(0,0,0,.02);
+      }
+      .pillBtn:disabled { opacity: .45; cursor: not-allowed; }
+      .pillBtn.primary {
+        border: none;
+        background: linear-gradient(90deg, var(--accent1), var(--accent2));
+        color: white;
+      }
+
+      /* carousel nav */
+      .navBtn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 44px;
+        height: 44px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,.25);
+        background: rgba(0,0,0,.35);
+        color: white;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        user-select: none;
+        backdrop-filter: blur(6px);
+      }
+      .navBtn:hover { background: rgba(0,0,0,.5); }
+      #nav-prev { left: 10px; }
+      #nav-next { right: 10px; }
+
+      .dots {
+        display: flex;
+        gap: 6px;
+        justify-content: center;
+        margin-top: 10px;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #d1d5db;
+        cursor: pointer;
+      }
+      .dot.active { background: #111827; }
+
+      .thumbs {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 10px 2px 2px;
+      }
+      .thumb {
+        width: 62px;
+        height: 62px;
         border-radius: 12px;
         overflow: hidden;
+        border: 2px solid transparent;
+        flex: 0 0 auto;
         background: #111;
-        border: 1px solid #eee;
-      }
-      .media-stage{
-        position: relative;
-        width: 100%;
-        aspect-ratio: 16 / 9;
-        background: #111;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-      }
-      #media-img{
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display:block;
-      }
-      .media-placeholder {
-        padding: 40px 16px;
-        text-align: center;
-        color: #aaa;
-        font-size: 12px;
-        background: #111;
-      }
-
-      .nav-btn{
-        position:absolute;
-        top:50%;
-        transform:translateY(-50%);
-        width:44px;
-        height:44px;
-        border-radius:999px;
-        border:1px solid rgba(255,255,255,0.35);
-        background:rgba(0,0,0,0.35);
-        color:#fff;
-        font-size:28px;
-        line-height:40px;
-        display:none;
-        align-items:center;
-        justify-content:center;
-        cursor:pointer;
-      }
-      .nav-prev{ left:10px; }
-      .nav-next{ right:10px; }
-      .nav-btn:active{ transform:translateY(-50%) scale(0.98); }
-
-      .play-btn{
-        position:absolute;
-        inset:auto auto 12px 12px;
-        width:52px;
-        height:52px;
-        border-radius:999px;
-        border:1px solid rgba(255,255,255,0.35);
-        background:rgba(0,0,0,0.35);
-        color:#fff;
-        font-size:20px;
-        cursor:pointer;
-        display:none;
-      }
-
-      .media-meta{
-        padding:10px 12px;
-        background:#fff;
-      }
-      .dots{
-        display:flex;
-        gap:6px;
-        justify-content:center;
-        align-items:center;
-        margin:6px 0 10px;
-      }
-      .dot{
-        width:8px;
-        height:8px;
-        border-radius:999px;
-        background:#ddd;
-      }
-      .dot.active{ background:#ff6a3d; }
-
-      .thumbs{
-        display:flex;
-        gap:8px;
-        overflow-x:auto;
-        padding-bottom:6px;
-        -webkit-overflow-scrolling: touch;
-      }
-      .thumb{
-        width:56px;
-        height:40px;
-        border-radius:10px;
-        overflow:hidden;
-        border:1px solid #eee;
-        flex:0 0 auto;
-        cursor:pointer;
-      }
-      .thumb img{
-        width:100%;
-        height:100%;
-        object-fit:cover;
-        display:block;
-      }
-      .thumb.active{
-        outline:2px solid #ff6a3d;
-        outline-offset:2px;
-      }
-
-      .video-link{
-        display:block;
-        text-align:center;
-        padding:10px 12px;
-        border-radius:12px;
-        border:1px solid #eee;
-        background:#fafafa;
-        color:#333;
-        text-decoration:none;
-        margin-top:8px;
-      }
-
-      /* ====== Caption/Hashtags ====== */
-      .caption-label { font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px; }
-      .caption-text, .hashtags {
-        font-size: 14px;
-        line-height: 1.7;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-      }
-      .hashtags { margin-top: 8px; }
-
-      .actions {
-        margin-top: 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      .btn {
-        border-radius: 999px;
-        padding: 10px 14px;
-        font-size: 14px;
-        border: none;
         cursor: pointer;
-        display: flex;
-        justify-content: center;
-        align-items: center;
       }
-      .btn-primary { background: linear-gradient(135deg, #ff7a00, #ff0069); color: #fff; }
-      .btn-secondary { background: #f0f0f5; color: #333; }
-      .btn-ghost { background: #ffffff; color: #333; border: 1px solid #ddd; }
+      .thumb.active { border-color: var(--accent2); }
+      .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-      .hint { margin-top: 10px; font-size: 11px; color: #777; }
-      .hint-small { margin-top: 6px; font-size: 11px; color: #888; }
-      .error { margin-top: 12px; font-size: 13px; color: #c62828; white-space: pre-wrap; }
-      .loading { font-size: 13px; color: #555; }
-
-      /* === STEP 2.5 チップUI === */
-      .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-      .chip {
-        border: 1px solid #d9d9de;
-        background: #fff;
-        color: #333;
-        border-radius: 14px;
+      .videoOverlay {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+      }
+      .videoPlay {
+        pointer-events: auto;
+        display: none;
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
         padding: 12px 14px;
-        font-size: 13px;
-        min-height: 44px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,.25);
+        background: rgba(0,0,0,.45);
+        color: #fff;
+        font-weight: 900;
         cursor: pointer;
+        backdrop-filter: blur(6px);
+      }
+      .videoLink {
+        display: none;
+        margin-top: 10px;
+        text-align: center;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .videoLink a { color: var(--text); font-weight: 800; }
+
+      /* Caption/Hashtags */
+      .captionBox {
+        margin-top: 12px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        padding: 12px;
+        background: #fff;
+      }
+      .captionLabel { font-size: 13px; font-weight: 900; margin-bottom: 6px; color: var(--muted); }
+      .captionText { white-space: pre-wrap; line-height: 1.6; font-size: 15px; }
+      .hashText { margin-top: 10px; white-space: pre-wrap; color: #374151; font-size: 14px; }
+
+      .bigCopy {
+        width: 100%;
+        border: none;
+        color: white;
+        font-size: 18px;
+        font-weight: 900;
+        padding: 18px 18px;
+        border-radius: 999px;
+        cursor: pointer;
+        background: linear-gradient(90deg, var(--accent1), var(--accent2));
+        margin-top: 12px;
+      }
+      .bigCopy:disabled { opacity: .55; cursor: not-allowed; }
+
+      /* Step 2.5 split */
+      .splitWrap { display: grid; gap: 14px; }
+      .panel {
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 18px;
+        padding: 14px;
+      }
+      .panelTitle {
         display: flex;
         align-items: center;
-        justify-content: center;
-        white-space: nowrap;
+        gap: 8px;
+        font-weight: 1000;
+        margin-bottom: 10px;
       }
-      .chip:hover { background: #fafafa; }
-      .chip:disabled { opacity: 0.45; cursor: not-allowed; }
-      .chip-ok {
-        border-color: #bfe5c8;
-        background: #f2fbf5;
-        font-weight: 600;
+      .btnGrid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
       }
-      .subbox{
-        margin-top:12px;
-        padding:12px;
-        border:1px solid #eee;
-        border-radius:14px;
-        background:#fafafa;
+      @media (max-width: 680px) {
+        .btnGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
-      .subbox-title{
-        font-size:13px;
-        font-weight:700;
-        margin-bottom:10px;
-        color:#333;
+      .miniBtn {
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 999px;
+        padding: 12px 12px;
+        font-weight: 900;
+        font-size: 14px;
+        cursor: pointer;
+        text-align: center;
       }
-      .subbox-subtitle{
-        margin-top:10px;
-        margin-bottom:6px;
-        font-size:12px;
-        font-weight:600;
-        color:#666;
+      .miniBtn:disabled { opacity: .45; cursor: not-allowed; }
+
+      .okRow { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+      .okBtn {
+        border: 1px solid var(--okline);
+        background: var(--okbg);
+        padding: 14px 18px;
+        border-radius: 999px;
+        font-weight: 1000;
+        cursor: pointer;
+      }
+
+      .error {
+        display: none;
+        margin-top: 10px;
+        color: #b91c1c;
+        font-weight: 800;
+      }
+
+      .hint {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 10px;
+        line-height: 1.5;
+      }
+
+      .step3Btn {
+        width: 100%;
+        border: none;
+        border-radius: 999px;
+        background: #efeff4;
+        padding: 16px;
+        font-size: 18px;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .smallList {
+        margin: 10px 0 0;
+        padding-left: 18px;
+        color: var(--muted);
+        line-height: 1.6;
       }
     </style>
-
-    <!-- supabase-js v2 -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   </head>
 
   <body>
-    <div class="container">
+    <div class="wrap">
       <div class="card">
-        <div class="title">SNS 投稿プレビュー</div>
-        <div id="meta" class="meta"></div>
+        <h1>SNS 投稿プレビュー</h1>
+        <div class="meta" id="meta">loading...</div>
 
-        <!-- STEP 1: 画像を保存 -->
-        <div class="section">
-          <div class="step-label">STEP 1</div>
-          <div class="section-title">画像を保存</div>
+        <!-- STEP 1 -->
+        <div class="stepLabel">STEP 1</div>
+        <div class="stepTitle">画像を保存</div>
 
-          <!-- Media Preview -->
-          <div class="media-box" id="media-box">
-            <div class="media-stage">
-              <img id="media-img" alt="preview" loading="lazy" style="display:none;" />
-              <div class="media-placeholder" id="media-placeholder">
-                画像/動画がまだ設定されていません。<br />
-                生成後にここへ表示されます。
-              </div>
+        <div class="mediaBox" id="media-box">
+          <button class="navBtn" id="nav-prev" style="display:none;">‹</button>
+          <button class="navBtn" id="nav-next" style="display:none;">›</button>
 
-              <button class="nav-btn nav-prev" id="nav-prev" type="button" aria-label="prev">‹</button>
-              <button class="nav-btn nav-next" id="nav-next" type="button" aria-label="next">›</button>
+          <img id="media-img" alt="preview" style="display:none;" />
+          <div class="mediaPlaceholder" id="media-placeholder">
+            画像がまだ設定されていません。<br />
+            generated_media_url / Storage の画像が入るとここに表示されます。
+          </div>
 
-              <button class="play-btn" id="video-play" type="button" aria-label="play">▶︎</button>
-            </div>
+          <button class="videoPlay" id="video-play" style="display:none;">▶ 動画を別タブで再生</button>
+        </div>
 
-            <div class="media-meta" id="media-meta" style="display:none;">
-              <div class="dots" id="dots"></div>
-              <div class="thumbs" id="thumbs"></div>
-              <a class="video-link" id="video-link" target="_blank" rel="noopener noreferrer" style="display:none;">
-                動画を別タブで開く
-              </a>
+        <div class="dots" id="dots"></div>
+        <div class="thumbs" id="thumbs"></div>
+
+        <div class="mediaControlsRow">
+          <button class="pillBtn" id="open-image-btn" disabled>画像を保存用に開く</button>
+        </div>
+        <div class="videoLink" id="video-link" style="display:none;"></div>
+
+        <!-- STEP 2 -->
+        <div class="stepLabel">STEP 2</div>
+        <div class="stepTitle">キャプションをコピー</div>
+
+        <div class="captionBox">
+          <div class="captionLabel">キャプション</div>
+          <div class="captionText" id="caption">読み込み中...</div>
+          <div class="hashText" id="hashtags"></div>
+        </div>
+
+        <button class="bigCopy" id="copy-btn" disabled>キャプション＋ハッシュタグをコピー</button>
+
+        <!-- STEP 2.5 -->
+        <div class="stepLabel">STEP 2.5</div>
+        <div class="stepTitle">文章・画像を微調整（再生成）</div>
+
+        <div class="splitWrap">
+          <!-- Text panel -->
+          <div class="panel">
+            <div class="panelTitle">✍️ 文章の調整</div>
+            <div class="btnGrid">
+              <button class="miniBtn" data-action="shorter_text">✂ 短く</button>
+              <button class="miniBtn" data-action="longer_text">📝 長く</button>
+              <button class="miniBtn" data-action="less_emoji">🙂 絵文字↓</button>
+              <button class="miniBtn" data-action="more_emoji">😄 絵文字↑</button>
+
+              <button class="miniBtn" data-action="softer_tone">✏️ やわらかく</button>
+              <button class="miniBtn" data-action="more_formal">🙇 丁寧に</button>
+              <button class="miniBtn" data-action="more_friendly">😊 親しみ</button>
+              <button class="miniBtn" data-action="adjust_hashtags"># タグ調整</button>
             </div>
           </div>
 
-          <div class="actions">
-            <button class="btn btn-ghost" id="open-image-btn" disabled>画像を保存用に開く</button>
-          </div>
-          <div class="hint-small" id="image-hint" style="display:none;">
-            ボタンを押して画像を全画面表示し、長押しで「写真を保存」を選んでください。
+          <!-- Media panel -->
+          <div class="panel">
+            <div class="panelTitle">🖼️ 画像・動画の調整</div>
+            <div class="btnGrid">
+              <!-- subject -->
+              <button class="miniBtn" data-action="img_subject_food">🍽 料理メイン</button>
+              <button class="miniBtn" data-action="img_subject_drink">🍻 ドリンク</button>
+              <button class="miniBtn" data-action="img_subject_interior">🏠 店内</button>
+              <button class="miniBtn" data-action="img_subject_staff">🙂 スタッフ</button>
+
+              <!-- composition -->
+              <button class="miniBtn" data-action="img_shot_closeup">🔍 寄る</button>
+              <button class="miniBtn" data-action="img_shot_wide">🧭 引く</button>
+              <button class="miniBtn" data-action="img_angle_change">📐 角度</button>
+              <button class="miniBtn" data-action="img_bg_clean">🧼 背景すっきり</button>
+
+              <!-- mood -->
+              <button class="miniBtn" data-action="img_mood_bright">☀️ 明るく</button>
+              <button class="miniBtn" data-action="img_mood_calm">🌙 落ち着き</button>
+              <button class="miniBtn" data-action="img_mood_luxury">✨ 高級感</button>
+              <button class="miniBtn" data-action="img_mood_social">📸 映え</button>
+
+              <!-- text overlay -->
+              <button class="miniBtn" data-action="img_text_on">🏷 テロップ有</button>
+              <button class="miniBtn" data-action="img_text_off">🚫 テロップ無</button>
+              <button class="miniBtn" data-action="img_variation">🎲 別案</button>
+              <button class="miniBtn" data-action="img_regen">🔄 再生成</button>
+            </div>
           </div>
         </div>
 
-        <!-- STEP 2: キャプションをコピー -->
-        <div class="section">
-          <div class="step-label">STEP 2</div>
-          <div class="section-title">キャプションをコピー</div>
-
-          <div class="caption-label">キャプション</div>
-          <div id="caption" class="caption-text loading">読み込み中...</div>
-          <div id="hashtags" class="hashtags"></div>
-
-          <div class="actions">
-            <button class="btn btn-primary" id="copy-btn">キャプション＋ハッシュタグをコピー</button>
-          </div>
+        <div class="okRow">
+          <button class="okBtn" id="ok-btn">✅ これでOK</button>
         </div>
 
-        <!-- STEP 2.5: フィードバック（再生成） -->
-        <div class="section">
-          <div class="step-label">STEP 2.5</div>
-          <div class="section-title">文章・画像を微調整（再生成）</div>
-
-          <!-- ========== テキスト調整 ========== -->
-          <div class="subbox">
-            <div class="subbox-title">📝 文章・ハッシュタグ</div>
-            <div class="chip-grid">
-              <button class="chip" data-action="shorter_text" type="button" disabled>✂ 短く</button>
-              <button class="chip" data-action="longer_text" type="button" disabled>📝 長く</button>
-
-              <button class="chip" data-action="less_emoji" type="button" disabled>😶 絵文字↓</button>
-              <button class="chip" data-action="more_emoji" type="button" disabled>😃 絵文字↑</button>
-
-              <button class="chip" data-action="softer_tone" type="button" disabled>✏️ やわらかく</button>
-              <button class="chip" data-action="more_formal" type="button" disabled>🧑‍💼 丁寧に</button>
-              <button class="chip" data-action="more_friendly" type="button" disabled>😊 親しみ</button>
-
-              <button class="chip" data-action="adjust_hashtags" type="button" disabled>#️⃣ タグ調整</button>
-            </div>
-            <div class="hint-small">文章・# はすぐ反映されます。</div>
-          </div>
-
-          <!-- ========== 画像/動画調整 ========== -->
-          <div class="subbox">
-            <div class="subbox-title">🖼 画像・動画（リール）</div>
-
-            <div class="subbox-subtitle">被写体</div>
-            <div class="chip-grid">
-              <button class="chip" data-action="img_subject_food" type="button" disabled>🍽 料理</button>
-              <button class="chip" data-action="img_subject_drink" type="button" disabled>🍻 ドリンク</button>
-              <button class="chip" data-action="img_subject_interior" type="button" disabled>🏠 店内</button>
-              <button class="chip" data-action="img_subject_staff" type="button" disabled>🙂 スタッフ</button>
-            </div>
-
-            <div class="subbox-subtitle">構図</div>
-            <div class="chip-grid">
-              <button class="chip" data-action="img_shot_closeup" type="button" disabled>🔍 寄る</button>
-              <button class="chip" data-action="img_shot_wide" type="button" disabled>🧭 引く</button>
-              <button class="chip" data-action="img_angle_change" type="button" disabled>📐 角度</button>
-              <button class="chip" data-action="img_clean_background" type="button" disabled>🧼 背景</button>
-            </div>
-
-            <div class="subbox-subtitle">雰囲気</div>
-            <div class="chip-grid">
-              <button class="chip" data-action="img_mood_bright" type="button" disabled>☀️ 明るく</button>
-              <button class="chip" data-action="img_mood_calm" type="button" disabled>🌙 落ち着き</button>
-              <button class="chip" data-action="img_mood_luxury" type="button" disabled>✨ 高級感</button>
-              <!-- ★ここだけ統一：img_mood_pop → img_mood_trendy -->
-              <button class="chip" data-action="img_mood_trendy" type="button" disabled>📸 映え</button>
-            </div>
-
-            <div class="subbox-subtitle">テロップ</div>
-            <div class="chip-grid">
-              <button class="chip" data-action="img_text_on" type="button" disabled>🏷 有</button>
-              <button class="chip" data-action="img_text_off" type="button" disabled>🚫 無</button>
-              <button class="chip" data-action="img_variation" type="button" disabled>🎲 別案</button>
-            </div>
-
-            <div class="hint-small">画像/動画は生成に数秒かかります。</div>
-          </div>
-
-          <!-- OK -->
-          <div class="chip-grid" style="margin-top: 10px;">
-            <button class="chip chip-ok" id="ok-btn" type="button" disabled>✅ これでOK</button>
-          </div>
-
-          <div class="hint-small">ボタンを押すと数秒後にキャプション/画像が更新されます。</div>
+        <div class="hint">
+          ボタンを押すと数秒後にキャプション/画像が更新されます。<br />
+          うまくいかない場合は下のエラー表示と、ブラウザのConsole/Networkを確認してください。
         </div>
 
-        <!-- STEP 3: Instagram を開く -->
-        <div class="section">
-          <div class="step-label">STEP 3</div>
-          <div class="section-title">Instagram に貼り付け</div>
-          <div class="actions">
-            <button class="btn btn-secondary" id="open-instagram">Instagram を開く</button>
-          </div>
-        </div>
+        <div class="error" id="error"></div>
 
-        <div id="hint" class="hint">
-          1. まず「画像を保存用に開く」で画像を保存<br />
-          2. 次に「キャプション＋ハッシュタグをコピー」<br />
-          3. 最後に Instagram を開き、投稿画面でペーストしてください
-        </div>
+        <!-- STEP 3 -->
+        <div class="stepLabel">STEP 3</div>
+        <div class="stepTitle">Instagram に貼り付け</div>
 
-        <div id="error" class="error" style="display:none;"></div>
+        <button class="step3Btn" id="open-instagram">Instagram を開く</button>
+        <ol class="smallList">
+          <li>まず「画像を保存用に開く」で画像を保存</li>
+          <li>次に「キャプション＋ハッシュタグをコピー」</li>
+          <li>最後に Instagram を開き、投稿画面でペーストしてください</li>
+        </ol>
       </div>
     </div>
 
     <script>
-      // ✅ あなたの Supabase 情報
+      // ========= 設定 =========
+      // あなたのプロジェクトに合わせて
       const SUPABASE_URL = "https://xzhavuhjpfwsrljkpyrv.supabase.co";
-      const SUPABASE_ANON_KEY =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6aGF2dWhqcGZ3c3JsamtweXJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyODg4MDMsImV4cCI6MjA3Nzg2NDgwM30.h2k2gnOcqme4JSg7VEkpqbIwh27OmdTqX_HkIUTniU4";
-
+      const SUPABASE_ANON_KEY = "（ここに anon key）"; // ←あなたのHTMLでは既に入れているはず
       const FUNCTIONS_BASE_URL = `${SUPABASE_URL}/functions/v1`;
 
-      const { createClient } = supabase;
-      const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-      const params = new URLSearchParams(window.location.search);
-      const planId = params.get("plan_id");
-
-      const metaEl = document.getElementById("meta");
-      const captionEl = document.getElementById("caption");
-      const hashtagsEl = document.getElementById("hashtags");
-      const errorEl = document.getElementById("error");
-      const copyBtn = document.getElementById("copy-btn");
-      const openInstagramBtn = document.getElementById("open-instagram");
-      const openImageBtn = document.getElementById("open-image-btn");
-      const imageHintEl = document.getElementById("image-hint");
-
-      // media UI elements
-      const mediaImg = document.getElementById("media-img");
-      const mediaPlaceholder = document.getElementById("media-placeholder");
-      const mediaMeta = document.getElementById("media-meta");
-      const navPrev = document.getElementById("nav-prev");
-      const navNext = document.getElementById("nav-next");
-      const dotsEl = document.getElementById("dots");
-      const thumbsEl = document.getElementById("thumbs");
-      const videoPlayBtn = document.getElementById("video-play");
-      const videoLink = document.getElementById("video-link");
-
-      // ===== Media state =====
-      let MEDIA_URLS = [];
-      let MEDIA_INDEX = 0;
-      let VIDEO_URL = null;
-      let VIDEO_THUMB = null;
-      let currentOpenableUrl = null;
-
-      function normalizeHashtags(hashtagsArr) {
-        return (hashtagsArr || [])
-          .map((h) => String(h || "").trim())
-          .filter(Boolean)
-          .map((h) => (h.startsWith("#") ? h : `#${h}`))
-          .join(" ");
+      // ========= util =========
+      function qs(name) {
+        const u = new URL(location.href);
+        return u.searchParams.get(name);
       }
-
-      function renderCaptionAndHashtags(caption, hashtagsArr) {
-        captionEl.textContent = caption || "キャプションが未設定です。";
-        const hashtags = normalizeHashtags(hashtagsArr);
-        hashtagsEl.textContent = hashtags;
-        const fullText = `${captionEl.textContent}\n\n${hashtags}`;
-        copyBtn.dataset.fulltext = fullText;
-      }
-
-      function setFeedbackButtonsEnabled(enabled) {
-        document.querySelectorAll("button[data-action], #ok-btn").forEach((btn) => {
-          btn.disabled = !enabled;
-        });
-      }
-
-      // キャッシュ対策
-      function withCacheBust(url) {
+      function bustCache(url) {
         if (!url) return url;
         const sep = url.includes("?") ? "&" : "?";
         return `${url}${sep}t=${Date.now()}`;
       }
-
-      // ===== 追加：fetchWithRetry（502/503/504対策） =====
-      async function fetchWithRetry(
-        url,
-        init,
-        opts = {}
-      ) {
-        const retries = opts.retries ?? 3;
-        const baseDelayMs = opts.baseDelayMs ?? 600;
-        const retryOn = new Set(opts.retryOn ?? [429, 500, 502, 503, 504]);
-
-        let lastText = "";
-        for (let i = 0; i <= retries; i++) {
-          const res = await fetch(url, init);
-          if (res.ok) return res;
-
-          const status = res.status;
-          lastText = await res.text().catch(() => "");
-
-          if (!retryOn.has(status) || i === retries) {
-            // 最終失敗：呼び出し元が読める形で返す
-            return new Response(lastText, { status, headers: res.headers });
-          }
-
-          const wait = baseDelayMs * Math.pow(2, i) + Math.floor(Math.random() * 250);
-          await new Promise((r) => setTimeout(r, wait));
-        }
-        throw new Error(lastText || "fetchWithRetry failed");
+      function escapeAttr(s) {
+        return String(s).replace(/"/g, "&quot;");
       }
 
-      // ===== Carousel/Video rendering =====
+      // ========= supabase client =========
+      const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      // ========= DOM =========
+      const metaEl = document.getElementById("meta");
+      const captionEl = document.getElementById("caption");
+      const hashtagsEl = document.getElementById("hashtags");
+      const errorEl = document.getElementById("error");
+
+      const copyBtn = document.getElementById("copy-btn");
+      const openImageBtn = document.getElementById("open-image-btn");
+
+      const mediaBox = document.getElementById("media-box");
+      const mediaImg = document.getElementById("media-img");
+      const mediaPlaceholder = document.getElementById("media-placeholder");
+
+      const navPrev = document.getElementById("nav-prev");
+      const navNext = document.getElementById("nav-next");
+      const dotsEl = document.getElementById("dots");
+      const thumbsEl = document.getElementById("thumbs");
+
+      const videoPlayBtn = document.getElementById("video-play");
+      const videoLinkWrap = document.getElementById("video-link");
+
+      // ========= state =========
+      let planId = qs("plan_id");
+      let CURRENT_MEDIA_KIND = "image"; // image | carousel | video
+      let MEDIA_URLS = [];
+      let MEDIA_INDEX = 0;
+      let VIDEO_URL = null;
+      let VIDEO_THUMB = null;
+
+      function setFeedbackButtonsEnabled(on) {
+        document.querySelectorAll("button[data-action]").forEach((btn) => {
+          btn.disabled = !on;
+        });
+      }
+
+      function renderCaptionAndHashtags(caption, hashtags) {
+        const cap = caption || "";
+        const hs = Array.isArray(hashtags) ? hashtags : (hashtags ? [String(hashtags)] : []);
+        captionEl.textContent = cap || "（キャプションがありません）";
+        hashtagsEl.textContent = hs.length ? hs.map((t) => (t.startsWith("#") ? t : "#" + t)).join(" ") : "";
+        copyBtn.dataset.fulltext = `${cap}\n\n${hashtagsEl.textContent}`.trim();
+        copyBtn.disabled = false;
+      }
+
+      // ========= media UI =========
       function setMediaMode({ kind, urls = [], videoUrl = null, videoThumb = null }) {
+        CURRENT_MEDIA_KIND = kind;
+
+        // reset
         MEDIA_URLS = [];
         MEDIA_INDEX = 0;
         VIDEO_URL = null;
         VIDEO_THUMB = null;
-        currentOpenableUrl = null;
 
+        // hide controls
         navPrev.style.display = "none";
         navNext.style.display = "none";
         dotsEl.innerHTML = "";
         thumbsEl.innerHTML = "";
         videoPlayBtn.style.display = "none";
-        videoLink.style.display = "none";
-        videoLink.removeAttribute("href");
+        videoLinkWrap.style.display = "none";
+        videoLinkWrap.innerHTML = "";
 
-        mediaMeta.style.display = "none";
+        // placeholder/img
         mediaImg.style.display = "none";
         mediaPlaceholder.style.display = "block";
 
-        openImageBtn.disabled = true;
-        imageHintEl.style.display = "none";
-
         if (kind === "video") {
-          VIDEO_URL = videoUrl || null;
-          VIDEO_THUMB = videoThumb || null;
+          VIDEO_URL = videoUrl;
+          VIDEO_THUMB = videoThumb;
 
           if (VIDEO_THUMB) {
-            mediaPlaceholder.style.display = "none";
+            mediaImg.src = bustCache(VIDEO_THUMB);
             mediaImg.style.display = "block";
-            mediaImg.src = withCacheBust(VIDEO_THUMB);
-            currentOpenableUrl = VIDEO_THUMB;
-            openImageBtn.disabled = false;
-            imageHintEl.style.display = "block";
+            mediaPlaceholder.style.display = "none";
           }
 
           videoPlayBtn.style.display = "inline-flex";
-          mediaMeta.style.display = "block";
-
           if (VIDEO_URL) {
-            videoLink.href = VIDEO_URL;
-            videoLink.style.display = "block";
+            videoLinkWrap.innerHTML = `動画URL：<a href="${escapeAttr(VIDEO_URL)}" target="_blank" rel="noopener">別タブで開く</a>`;
+            videoLinkWrap.style.display = "block";
           }
+          openImageBtn.disabled = !VIDEO_THUMB;
           return;
         }
 
+        // image / carousel
         MEDIA_URLS = Array.isArray(urls) ? urls.filter(Boolean) : [];
-        if (MEDIA_URLS.length === 0) return;
-
-        mediaPlaceholder.style.display = "none";
-        mediaImg.style.display = "block";
-        mediaMeta.style.display = "block";
-
-        if (MEDIA_URLS.length === 1) {
-          mediaImg.src = withCacheBust(MEDIA_URLS[0]);
-          currentOpenableUrl = MEDIA_URLS[0];
-          openImageBtn.disabled = false;
-          imageHintEl.style.display = "block";
-          dotsEl.innerHTML = "";
-          thumbsEl.innerHTML = "";
+        if (MEDIA_URLS.length === 0) {
+          openImageBtn.disabled = true;
           return;
         }
 
+        mediaImg.src = bustCache(MEDIA_URLS[0]);
+        mediaImg.style.display = "block";
+        mediaPlaceholder.style.display = "none";
+        openImageBtn.disabled = false;
+
+        if (MEDIA_URLS.length === 1) return;
+
+        // carousel
         navPrev.style.display = "inline-flex";
         navNext.style.display = "inline-flex";
-
         renderCarouselUI();
         showCarouselIndex(0);
-
-        openImageBtn.disabled = false;
-        imageHintEl.style.display = "block";
       }
 
       function renderCarouselUI() {
@@ -566,7 +546,7 @@
 
         thumbsEl.innerHTML = MEDIA_URLS.map((u, i) => `
           <div class="thumb ${i === MEDIA_INDEX ? "active" : ""}" data-i="${i}">
-            <img src="${escapeAttr(withCacheBust(u))}" alt="thumb${i}" loading="lazy" />
+            <img src="${escapeAttr(bustCache(u))}" alt="thumb${i}" loading="lazy" />
           </div>
         `).join("");
 
@@ -581,18 +561,16 @@
       function showCarouselIndex(i) {
         if (!MEDIA_URLS.length) return;
         MEDIA_INDEX = Math.max(0, Math.min(i, MEDIA_URLS.length - 1));
-        const url = MEDIA_URLS[MEDIA_INDEX];
-
-        mediaImg.src = withCacheBust(url);
-        currentOpenableUrl = url;
+        mediaImg.src = bustCache(MEDIA_URLS[MEDIA_INDEX]);
 
         dotsEl.querySelectorAll(".dot").forEach((d, idx) => d.classList.toggle("active", idx === MEDIA_INDEX));
         thumbsEl.querySelectorAll(".thumb").forEach((t, idx) => t.classList.toggle("active", idx === MEDIA_INDEX));
 
+        // prefetch next
         const next = MEDIA_URLS[MEDIA_INDEX + 1];
         if (next) {
           const img = new Image();
-          img.src = withCacheBust(next);
+          img.src = bustCache(next);
         }
       }
 
@@ -604,29 +582,72 @@
         else alert("動画URLがまだありません（生成中/未作成）");
       });
 
-      function escapeAttr(s) {
-        return String(s).replace(/"/g, "&quot;");
+      openImageBtn.addEventListener("click", () => {
+        if (CURRENT_MEDIA_KIND === "video") {
+          if (VIDEO_THUMB) window.open(VIDEO_THUMB, "_blank", "noopener");
+          return;
+        }
+        if (MEDIA_URLS.length) window.open(MEDIA_URLS[MEDIA_INDEX] || MEDIA_URLS[0], "_blank", "noopener");
+      });
+
+      // ========= DB fetch: asset を “壊れない” 取得 =========
+      async function fetchAssetSafe(media_id) {
+        if (!media_id) return null;
+
+        // ① まず「新しい想定」のselect
+        const trySelects = [
+          "media_id, storage_bucket, storage_key, public_url, media_urls, video_public_url, video_thumbnail_url",
+          "media_id, storage_bucket, storage_key, public_url",
+          "media_id, storage_bucket, storage_key",
+        ];
+
+        for (const sel of trySelects) {
+          const { data, error } = await client
+            .from("sns_media_assets")
+            .select(sel)
+            .eq("media_id", media_id)
+            .maybeSingle();
+
+          if (!error) return data;
+
+          // column not exist / schema mismatch は次のフォールバックへ
+          const msg = (error && (error.message || "")) || "";
+          if (!/does not exist|42703/i.test(msg)) {
+            console.error("fetchAssetSafe error", error);
+            return null;
+          }
+        }
+        return null;
       }
 
-      // ====== Boot ======
-      if (!planId) {
-        captionEl.textContent = "";
-        errorEl.style.display = "block";
-        errorEl.textContent = "plan_id が指定されていません。メールのリンクから開いてください。";
-        copyBtn.disabled = true;
-        openImageBtn.disabled = true;
-        setFeedbackButtonsEnabled(false);
-      } else {
-        setFeedbackButtonsEnabled(false);
-        loadPlan(planId);
+      function normalizeMaybeArray(v) {
+        // jsonb array -> Array
+        if (Array.isArray(v)) return v;
+        // textのJSON文字列 -> Array
+        if (typeof v === "string") {
+          try {
+            const x = JSON.parse(v);
+            if (Array.isArray(x)) return x;
+          } catch (_) {}
+        }
+        return null;
       }
 
+      function buildPublicUrlFromStorage(bucket, key) {
+        if (!bucket || !key) return null;
+        const { data } = client.storage.from(bucket).getPublicUrl(key);
+        return data?.publicUrl || null;
+      }
+
+      // ========= load plan =========
       async function loadPlan(planId) {
         try {
           captionEl.textContent = "読み込み中...";
           hashtagsEl.textContent = "";
           errorEl.style.display = "none";
-          errorEl.textContent = "";
+          copyBtn.disabled = true;
+          openImageBtn.disabled = true;
+          setFeedbackButtonsEnabled(false);
 
           const { data: plan, error } = await client
             .from("sns_post_plans")
@@ -640,90 +661,58 @@
           metaEl.textContent = `store: ${plan.store_id} / ${plan.platform} / ${plan.scheduled_at}`;
           renderCaptionAndHashtags(plan.caption, plan.hashtags);
 
-          let finalMediaUrl = null;
+          // 初期メディア表示（media_id -> sns_media_assets）
+          let shown = false;
 
           if (plan.media_id) {
-            const { data: asset, error: assetError } = await client
-              .from("sns_media_assets")
-              .select("storage_bucket, storage_key, public_url, media_urls, video_public_url, video_thumbnail_url")
-              .eq("media_id", plan.media_id)
-              .maybeSingle();
+            const asset = await fetchAssetSafe(plan.media_id);
 
-            if (assetError) console.error("assetError", assetError);
+            if (asset) {
+              // 1) carousel
+              const arr = normalizeMaybeArray(asset.media_urls);
+              if (arr && arr.length) {
+                setMediaMode({ kind: "carousel", urls: arr });
+                shown = true;
+              }
 
-            if (asset && Array.isArray(asset.media_urls) && asset.media_urls.length) {
-              setMediaMode({ kind: "carousel", urls: asset.media_urls });
-              setFeedbackButtonsEnabled(true);
-              return;
-            }
+              // 2) video
+              if (!shown && (asset.video_thumbnail_url || asset.video_public_url)) {
+                setMediaMode({
+                  kind: "video",
+                  videoUrl: asset.video_public_url || null,
+                  videoThumb: asset.video_thumbnail_url || null,
+                });
+                shown = true;
+              }
 
-            if (asset && (asset.video_thumbnail_url || asset.video_public_url)) {
-              setMediaMode({
-                kind: "video",
-                videoUrl: asset.video_public_url || null,
-                videoThumb: asset.video_thumbnail_url || null,
-              });
-              setFeedbackButtonsEnabled(true);
-              return;
-            }
-
-            if (asset && asset.public_url) finalMediaUrl = asset.public_url;
-
-            if (!finalMediaUrl && asset && asset.storage_bucket && asset.storage_key) {
-              const { data: publicUrlData } = client.storage
-                .from(asset.storage_bucket)
-                .getPublicUrl(asset.storage_key);
-
-              if (publicUrlData && publicUrlData.publicUrl) {
-                finalMediaUrl = publicUrlData.publicUrl;
+              // 3) single image
+              if (!shown) {
+                const url = asset.public_url || buildPublicUrlFromStorage(asset.storage_bucket, asset.storage_key);
+                if (url) {
+                  setMediaMode({ kind: "image", urls: [url] });
+                  shown = true;
+                }
               }
             }
           }
 
-          if (finalMediaUrl) setMediaMode({ kind: "image", urls: [finalMediaUrl] });
-          else setMediaMode({ kind: "image", urls: [] });
+          if (!shown) {
+            setMediaMode({ kind: "image", urls: [] }); // placeholder
+          }
 
           setFeedbackButtonsEnabled(true);
         } catch (e) {
           console.error(e);
           captionEl.textContent = "";
           errorEl.style.display = "block";
-          errorEl.textContent = `予期しないエラーが発生しました:\n${e?.message || e}`;
-          copyBtn.disabled = true;
-          openImageBtn.disabled = true;
+          errorEl.textContent = `予期しないエラーが発生しました: ${e?.message || e}`;
           setFeedbackButtonsEnabled(false);
         }
       }
 
-      // STEP2: キャプションコピー
-      copyBtn.addEventListener("click", async () => {
-        const full = copyBtn.dataset.fulltext || "";
-        try {
-          await navigator.clipboard.writeText(full);
-          copyBtn.textContent = "コピーしました";
-          setTimeout(() => {
-            copyBtn.textContent = "キャプション＋ハッシュタグをコピー";
-          }, 1800);
-        } catch (e) {
-          alert("コピーに失敗しました。手動で選択してコピーしてください。");
-          console.error(e);
-        }
-      });
-
-      // STEP1: 画像を保存用に開く
-      openImageBtn.addEventListener("click", () => {
-        if (!currentOpenableUrl) return;
-        window.open(withCacheBust(currentOpenableUrl), "_blank");
-      });
-
-      // STEP3: Instagram
-      openInstagramBtn.addEventListener("click", () => {
-        window.open("https://www.instagram.com/", "_blank");
-      });
-
-      // ★ここを fetchWithRetry に変更（OpenAI 502対策）
+      // ========= feedback call =========
       async function callFeedback(action) {
-        const res = await fetchWithRetry(`${FUNCTIONS_BASE_URL}/sns-preview-feedback`, {
+        const res = await fetch(`${FUNCTIONS_BASE_URL}/sns-preview-feedback`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -732,27 +721,26 @@
           body: JSON.stringify({ plan_id: planId, action }),
         });
 
-        const text = await res.text();
+        const text = await res.text().catch(() => "");
         let json = null;
         try { json = text ? JSON.parse(text) : null; } catch (_) {}
 
         if (!res.ok) {
-          const msg = (json && (json.error || json.message || json.detail))
-            ? (json.error || json.message || json.detail)
-            : (text || "feedback failed");
-          // 画面にも残す（原因切り分け用）
-          errorEl.style.display = "block";
-          errorEl.textContent = `再生成エラー:\naction=${action}\n${msg}`;
+          const msg = (json && (json.error || json.message || json.detail)) ? (json.error || json.message || json.detail) : (text || "feedback failed");
           throw new Error(msg);
         }
         return json || {};
       }
 
       function applyMediaFromResponse(out) {
+        // ✅ Edge Functionレスポンスが最優先（ここが超重要）
+        // 1) carousel
         if (Array.isArray(out.media_urls) && out.media_urls.length) {
           setMediaMode({ kind: "carousel", urls: out.media_urls });
           return;
         }
+
+        // 2) video
         if (out.video_thumbnail_url || out.video_public_url) {
           setMediaMode({
             kind: "video",
@@ -761,32 +749,66 @@
           });
           return;
         }
+
+        // 3) single image
         if (out.media_public_url) {
           setMediaMode({ kind: "image", urls: [out.media_public_url] });
           return;
         }
+
+        // 4) もし media_id だけ増えてURLが無い場合はDBを引き直す（保険）
+        if (out.media_id) {
+          fetchAssetSafe(out.media_id).then((asset) => {
+            if (!asset) return;
+            const arr = normalizeMaybeArray(asset.media_urls);
+            if (arr && arr.length) {
+              setMediaMode({ kind: "carousel", urls: arr });
+              return;
+            }
+            if (asset.video_thumbnail_url || asset.video_public_url) {
+              setMediaMode({ kind: "video", videoUrl: asset.video_public_url || null, videoThumb: asset.video_thumbnail_url || null });
+              return;
+            }
+            const url = asset.public_url || buildPublicUrlFromStorage(asset.storage_bucket, asset.storage_key);
+            if (url) setMediaMode({ kind: "image", urls: [url] });
+          });
+        }
       }
+
+      // ========= events =========
+      document.getElementById("open-instagram").addEventListener("click", () => {
+        window.open("https://www.instagram.com/", "_blank");
+      });
+
+      copyBtn.addEventListener("click", async () => {
+        const full = copyBtn.dataset.fulltext || "";
+        try {
+          await navigator.clipboard.writeText(full);
+          copyBtn.textContent = "コピーしました";
+          setTimeout(() => (copyBtn.textContent = "キャプション＋ハッシュタグをコピー"), 1800);
+        } catch (e) {
+          alert("コピーに失敗しました。手動で選択してコピーしてください。");
+          console.error(e);
+        }
+      });
 
       document.querySelectorAll("button[data-action]").forEach((btn) => {
         btn.addEventListener("click", async () => {
-          if (!planId) return;
           const action = btn.dataset.action;
-          if (!action) return;
-
           const prevText = btn.textContent;
 
           try {
             errorEl.style.display = "none";
-            errorEl.textContent = "";
-
             setFeedbackButtonsEnabled(false);
             btn.textContent = "生成中...";
-
             const out = await callFeedback(action);
 
-            if (out.caption || out.hashtags) {
+            // ✅ text update
+            if (typeof out.caption !== "undefined" || typeof out.hashtags !== "undefined") {
               renderCaptionAndHashtags(out.caption, out.hashtags);
             }
+
+            // ✅ media update
             applyMediaFromResponse(out);
 
             btn.textContent = prevText;
@@ -795,6 +817,8 @@
             console.error(e);
             btn.textContent = prevText;
             setFeedbackButtonsEnabled(true);
+            errorEl.style.display = "block";
+            errorEl.textContent = `失敗：${e?.message || e}`;
             alert(`失敗：${e?.message || e}`);
           }
         });
@@ -803,6 +827,15 @@
       document.getElementById("ok-btn").addEventListener("click", () => {
         alert("OKとして確定（次はここでステータス更新などを実装できます）");
       });
+
+      // ========= init =========
+      if (!planId) {
+        errorEl.style.display = "block";
+        errorEl.textContent = "plan_id がURLにありません";
+        setFeedbackButtonsEnabled(false);
+      } else {
+        loadPlan(planId);
+      }
     </script>
   </body>
 </html>
