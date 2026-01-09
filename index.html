@@ -478,6 +478,18 @@
 
             renderCaptionAndHashtags(out.caption, out.hashtags);
 
+            if (out.media_public_url) {
+              // 画像差し替え
+              currentMediaUrl = out.media_public_url;
+              const img = document.createElement("img");
+              img.src = out.media_public_url;
+              img.alt = "プレビュー画像";
+              mediaEl.innerHTML = "";
+              mediaEl.appendChild(img);
+              openImageBtn.disabled = false;
+            }
+
+
             btn.textContent = prevText;
             setFeedbackButtonsEnabled(true);
           } catch (e) {
