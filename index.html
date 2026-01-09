@@ -12,30 +12,17 @@
         padding: 16px;
         background: #f5f5f7;
       }
-      .container {
-        max-width: 560px;
-        margin: 0 auto;
-      }
+      .container { max-width: 560px; margin: 0 auto; }
       .card {
         background: #fff;
         border-radius: 16px;
         box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
         padding: 16px;
       }
-      .title {
-        font-size: 18px;
-        font-weight: 600;
-        margin-bottom: 8px;
-      }
-      .meta {
-        font-size: 12px;
-        color: #777;
-        margin-bottom: 16px;
-      }
+      .title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+      .meta { font-size: 12px; color: #777; margin-bottom: 16px; }
 
-      .section {
-        margin-top: 16px;
-      }
+      .section { margin-top: 16px; }
       .step-label {
         font-size: 11px;
         font-weight: 700;
@@ -44,11 +31,7 @@
         text-transform: uppercase;
         margin-bottom: 4px;
       }
-      .section-title {
-        font-size: 15px;
-        font-weight: 600;
-        margin-bottom: 8px;
-      }
+      .section-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
 
       .media {
         margin: 4px 0 12px;
@@ -70,22 +53,14 @@
         background: #111;
       }
 
-      .caption-label {
-        font-size: 12px;
-        font-weight: 600;
-        color: #666;
-        margin-bottom: 4px;
-      }
-      .caption-text,
-      .hashtags {
+      .caption-label { font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px; }
+      .caption-text, .hashtags {
         font-size: 14px;
         line-height: 1.7;
         white-space: pre-wrap;
         word-wrap: break-word;
       }
-      .hashtags {
-        margin-top: 8px;
-      }
+      .hashtags { margin-top: 8px; }
 
       .actions {
         margin-top: 12px;
@@ -103,46 +78,17 @@
         justify-content: center;
         align-items: center;
       }
-      .btn-primary {
-        background: linear-gradient(135deg, #ff7a00, #ff0069);
-        color: #fff;
-      }
-      .btn-secondary {
-        background: #f0f0f5;
-        color: #333;
-      }
-      .btn-ghost {
-        background: #ffffff;
-        color: #333;
-        border: 1px solid #ddd;
-      }
+      .btn-primary { background: linear-gradient(135deg, #ff7a00, #ff0069); color: #fff; }
+      .btn-secondary { background: #f0f0f5; color: #333; }
+      .btn-ghost { background: #ffffff; color: #333; border: 1px solid #ddd; }
 
-      .hint {
-        margin-top: 10px;
-        font-size: 11px;
-        color: #777;
-      }
-      .hint-small {
-        margin-top: 6px;
-        font-size: 11px;
-        color: #888;
-      }
-      .error {
-        margin-top: 12px;
-        font-size: 13px;
-        color: #c62828;
-      }
-      .loading {
-        font-size: 13px;
-        color: #555;
-      }
+      .hint { margin-top: 10px; font-size: 11px; color: #777; }
+      .hint-small { margin-top: 6px; font-size: 11px; color: #888; }
+      .error { margin-top: 12px; font-size: 13px; color: #c62828; }
+      .loading { font-size: 13px; color: #555; }
 
       /* === STEP 2.5 チップUI === */
-      .chip-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
+      .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
       .chip {
         border: 1px solid #d9d9de;
         background: #fff;
@@ -150,7 +96,7 @@
         border-radius: 14px;
         padding: 12px 14px;
         font-size: 13px;
-        min-height: 44px; /* スマホ押しやすさ */
+        min-height: 44px;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -184,16 +130,14 @@
           <div class="media" id="media">
             <div class="media-placeholder" id="media-placeholder">
               画像がまだ設定されていません。<br />
-              generated_media_url または Storage の画像が入るとここに表示されます。
+              生成後にここへ表示されます。
             </div>
           </div>
 
           <div class="actions">
-            <button class="btn btn-ghost" id="open-image-btn" disabled>
-              画像を保存用に開く
-            </button>
+            <button class="btn btn-ghost" id="open-image-btn" disabled>画像を保存用に開く</button>
           </div>
-          <div class="hint-small" id="image-hint" style="display: none;">
+          <div class="hint-small" id="image-hint" style="display:none;">
             ボタンを押して画像を全画面表示し、長押しで「写真を保存」を選んでください。
           </div>
         </div>
@@ -208,36 +152,59 @@
           <div id="hashtags" class="hashtags"></div>
 
           <div class="actions">
-            <button class="btn btn-primary" id="copy-btn">
-              キャプション＋ハッシュタグをコピー
-            </button>
+            <button class="btn btn-primary" id="copy-btn">キャプション＋ハッシュタグをコピー</button>
           </div>
         </div>
 
         <!-- STEP 2.5: フィードバック（再生成） -->
         <div class="section">
           <div class="step-label">STEP 2.5</div>
-          <div class="section-title">文章を微調整（再生成）</div>
+          <div class="section-title">文章・画像を微調整（再生成）</div>
 
-          <div class="chip-grid">
-            <button class="chip chip-ok" id="ok-btn" type="button" disabled>✅ この内容でOK</button>
+          <div class="chip-grid" style="margin-top:10px;">
+            <!-- テキスト系 -->
+            <button class="chip" data-action="shorter_text" type="button" disabled>✂ 短く</button>
+            <button class="chip" data-action="longer_text" type="button" disabled>📝 長く</button>
 
-            <button class="chip" data-action="shorter_text" type="button" disabled>✂️ 文章を短く</button>
-            <button class="chip" data-action="longer_text" type="button" disabled>📝 文章を長く</button>
-
-            <button class="chip" data-action="less_emoji" type="button" disabled>😃 絵文字を減らす</button>
-            <button class="chip" data-action="more_emoji" type="button" disabled>😃 絵文字を増やす</button>
+            <button class="chip" data-action="less_emoji" type="button" disabled>😶 絵文字↓</button>
+            <button class="chip" data-action="more_emoji" type="button" disabled>😃 絵文字↑</button>
 
             <button class="chip" data-action="softer_tone" type="button" disabled>✏️ やわらかく</button>
-            <button class="chip" data-action="more_formal" type="button" disabled>🧑‍💼 もっと丁寧に</button>
-            <button class="chip" data-action="more_friendly" type="button" disabled>😊 親しみやすく</button>
+            <button class="chip" data-action="more_formal" type="button" disabled>🧑‍💼 丁寧に</button>
+            <button class="chip" data-action="more_friendly" type="button" disabled>😊 親しみ</button>
 
             <button class="chip" data-action="adjust_hashtags" type="button" disabled>#️⃣ タグ調整</button>
+
+            <!-- 画像：被写体 -->
+            <button class="chip" data-action="img_subject_food" type="button" disabled>🍽 料理メイン</button>
+            <button class="chip" data-action="img_subject_drink" type="button" disabled>🍻 ドリンクメイン</button>
+            <button class="chip" data-action="img_subject_interior" type="button" disabled>🏠 店内メイン</button>
+            <button class="chip" data-action="img_subject_staff" type="button" disabled>🙂 スタッフ感</button>
+
+            <!-- 画像：構図 -->
+            <button class="chip" data-action="img_shot_closeup" type="button" disabled>🔍 もっと寄る</button>
+            <button class="chip" data-action="img_shot_wide" type="button" disabled>🧭 もっと引く</button>
+            <button class="chip" data-action="img_angle_change" type="button" disabled>📐 角度変更</button>
+            <button class="chip" data-action="img_clean_background" type="button" disabled>🧼 背景すっきり</button>
+
+            <!-- 画像：雰囲気 -->
+            <button class="chip" data-action="img_mood_bright" type="button" disabled>☀️ 明るく</button>
+            <button class="chip" data-action="img_mood_calm" type="button" disabled>🌙 落ち着き</button>
+            <button class="chip" data-action="img_mood_luxury" type="button" disabled>✨ 高級感</button>
+            <button class="chip" data-action="img_mood_pop" type="button" disabled>📸 映え</button>
+
+            <!-- 画像：テキスト -->
+            <button class="chip" data-action="img_text_on" type="button" disabled>🏷 テロップ有</button>
+            <button class="chip" data-action="img_text_off" type="button" disabled>🚫 テロップ無</button>
+
+            <!-- 画像：揺らぎ -->
+            <button class="chip" data-action="img_variation" type="button" disabled>🎲 別案</button>
+
+            <!-- OK -->
+            <button class="chip chip-ok" id="ok-btn" type="button" disabled>✅ これでOK</button>
           </div>
 
-          <div class="hint-small" id="feedback-hint">
-            ボタンを押すと数秒後にキャプションが更新されます。
-          </div>
+          <div class="hint-small">ボタンを押すと数秒後にキャプション/画像が更新されます。</div>
         </div>
 
         <!-- STEP 3: Instagram を開く -->
@@ -245,9 +212,7 @@
           <div class="step-label">STEP 3</div>
           <div class="section-title">Instagram に貼り付け</div>
           <div class="actions">
-            <button class="btn btn-secondary" id="open-instagram">
-              Instagram を開く
-            </button>
+            <button class="btn btn-secondary" id="open-instagram">Instagram を開く</button>
           </div>
         </div>
 
@@ -257,7 +222,7 @@
           3. 最後に Instagram を開き、投稿画面でペーストしてください
         </div>
 
-        <div id="error" class="error" style="display: none;"></div>
+        <div id="error" class="error" style="display:none;"></div>
       </div>
     </div>
 
@@ -280,12 +245,10 @@
       const hashtagsEl = document.getElementById("hashtags");
       const errorEl = document.getElementById("error");
       const mediaEl = document.getElementById("media");
-      const mediaPlaceholderEl = document.getElementById("media-placeholder");
       const copyBtn = document.getElementById("copy-btn");
       const openInstagramBtn = document.getElementById("open-instagram");
       const openImageBtn = document.getElementById("open-image-btn");
       const imageHintEl = document.getElementById("image-hint");
-      const okBtn = document.getElementById("ok-btn");
 
       let currentMediaUrl = null;
 
@@ -312,11 +275,43 @@
         });
       }
 
+      // ✅ キャッシュ対策（画像が更新されない問題の本丸）
+      function withCacheBust(url) {
+        if (!url) return url;
+        const sep = url.includes("?") ? "&" : "?";
+        return `${url}${sep}t=${Date.now()}`;
+      }
+
+      // ✅ 画像描画を関数化：初回ロードでも、ボタン押下後でも、同じ処理で更新
+      function renderMedia(url) {
+        currentMediaUrl = url || null;
+
+        if (currentMediaUrl) {
+          const img = document.createElement("img");
+          img.src = withCacheBust(currentMediaUrl);
+          img.alt = "プレビュー画像";
+
+          mediaEl.innerHTML = "";
+          mediaEl.appendChild(img);
+
+          openImageBtn.disabled = false;
+          imageHintEl.style.display = "block";
+        } else {
+          mediaEl.innerHTML = "";
+          const ph = document.createElement("div");
+          ph.className = "media-placeholder";
+          ph.textContent = "画像URLがまだ設定されていません。";
+          mediaEl.appendChild(ph);
+
+          openImageBtn.disabled = true;
+          imageHintEl.style.display = "none";
+        }
+      }
+
       if (!planId) {
         captionEl.textContent = "";
         errorEl.style.display = "block";
-        errorEl.textContent =
-          "plan_id が指定されていません。メールのリンクから開いてください。";
+        errorEl.textContent = "plan_id が指定されていません。メールのリンクから開いてください。";
         copyBtn.disabled = true;
         openImageBtn.disabled = true;
         setFeedbackButtonsEnabled(false);
@@ -331,44 +326,24 @@
           hashtagsEl.textContent = "";
           errorEl.style.display = "none";
 
-          // 1) プラン情報を取得（media_id も取る）
-          const { data: plan, error: planError } = await client
+          // plans を取得
+          const { data: plan, error } = await client
             .from("sns_post_plans")
-            .select(
-              "store_id, platform, media_kind, scheduled_at, caption, hashtags, generated_media_url, posted_url, media_id"
-            )
+            .select("plan_id, store_id, platform, scheduled_at, caption, hashtags, media_id, media_public_url")
             .eq("plan_id", planId)
-            .single();
+            .maybeSingle();
 
-          if (planError || !plan) {
-            console.error(planError);
-            captionEl.textContent = "";
-            errorEl.style.display = "block";
-            errorEl.textContent =
-              "プラン情報の取得に失敗しました。リンクが古い可能性があります。";
-            copyBtn.disabled = true;
-            openImageBtn.disabled = true;
-            setFeedbackButtonsEnabled(false);
-            return;
-          }
+          if (error) throw error;
+          if (!plan) throw new Error("plan が見つかりません");
 
-          // メタ情報
-          const dt = plan.scheduled_at ? new Date(plan.scheduled_at) : null;
-          const dtStr = dt
-            ? `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2,"0")}/${String(dt.getDate()).padStart(2,"0")} ${String(dt.getHours()).padStart(2,"0")}:${String(dt.getMinutes()).padStart(2,"0")}`
-            : "日時未設定";
+          metaEl.textContent = `store: ${plan.store_id} / ${plan.platform} / ${plan.scheduled_at}`;
 
-          metaEl.textContent = `${plan.store_id} / ${plan.platform} / ${plan.media_kind} / ${dtStr}`;
+          renderCaptionAndHashtags(plan.caption, plan.hashtags);
 
-          // キャプション・ハッシュタグ
-          renderCaptionAndHashtags(plan.caption || "", plan.hashtags || []);
+          // 画像URL（優先: plan.media_public_url / 次: media_id→assets）
+          let finalMediaUrl = plan.media_public_url || null;
 
-          // 2) 画像URLの決定ロジック
-          let finalMediaUrl = null;
-
-          if (plan.generated_media_url) {
-            finalMediaUrl = plan.generated_media_url;
-          } else if (plan.media_id) {
+          if (!finalMediaUrl && plan.media_id) {
             const { data: asset, error: assetError } = await client
               .from("sns_media_assets")
               .select("storage_bucket, storage_key")
@@ -388,33 +363,10 @@
             }
           }
 
-          currentMediaUrl = finalMediaUrl;
-
-          if (finalMediaUrl) {
-            const img = document.createElement("img");
-            img.src = finalMediaUrl;
-            img.alt = "プレビュー画像";
-            mediaEl.innerHTML = "";
-            mediaEl.appendChild(img);
-
-            openImageBtn.disabled = false;
-            imageHintEl.style.display = "block";
-          } else {
-            // mediaElがimgで置き換わっている可能性もあるので安全に戻す
-            mediaEl.innerHTML = "";
-            const ph = document.createElement("div");
-            ph.className = "media-placeholder";
-            ph.id = "media-placeholder";
-            ph.textContent = "画像URLがまだ設定されていません。";
-            mediaEl.appendChild(ph);
-
-            openImageBtn.disabled = true;
-            imageHintEl.style.display = "none";
-          }
+          renderMedia(finalMediaUrl);
 
           // ✅ planが読めたらボタンON
           setFeedbackButtonsEnabled(true);
-
         } catch (e) {
           console.error(e);
           captionEl.textContent = "";
@@ -441,6 +393,18 @@
         }
       });
 
+      // STEP1: 画像を保存用に開く（常に「最新のURL」を開く）
+      openImageBtn.addEventListener("click", () => {
+        if (!currentMediaUrl) return;
+        window.open(withCacheBust(currentMediaUrl), "_blank");
+      });
+
+      // STEP3: Instagram
+      openInstagramBtn.addEventListener("click", () => {
+        // iOS/Androidでの挙動は端末依存。まずはWebを開くMVP。
+        window.open("https://www.instagram.com/", "_blank");
+      });
+
       async function callFeedback(action) {
         const res = await fetch(`${FUNCTIONS_BASE_URL}/sns-preview-feedback`, {
           method: "POST",
@@ -456,15 +420,16 @@
 
         const json = await res.json();
         if (!res.ok) {
-          throw new Error(json?.error || "feedback failed");
+          throw new Error(json?.error || json?.message || "feedback failed");
         }
-        return json; // { caption, hashtags, ... }
+        return json; // { caption, hashtags, media_public_url, ... }
       }
 
       // ✅ 全ボタン共通ハンドラ（data-action）
       document.querySelectorAll("button[data-action]").forEach((btn) => {
         btn.addEventListener("click", async () => {
           if (!planId) return;
+
           const action = btn.dataset.action;
           if (!action) return;
 
@@ -476,19 +441,13 @@
 
             const out = await callFeedback(action);
 
+            // テキストは常に即反映
             renderCaptionAndHashtags(out.caption, out.hashtags);
 
+            // ✅ 画像が返ってきた時は、その場で差し替え（ここが今回のキモ）
             if (out.media_public_url) {
-              // 画像差し替え
-              currentMediaUrl = out.media_public_url;
-              const img = document.createElement("img");
-              img.src = out.media_public_url;
-              img.alt = "プレビュー画像";
-              mediaEl.innerHTML = "";
-              mediaEl.appendChild(img);
-              openImageBtn.disabled = false;
+              renderMedia(out.media_public_url);
             }
-
 
             btn.textContent = prevText;
             setFeedbackButtonsEnabled(true);
@@ -496,28 +455,14 @@
             console.error(e);
             btn.textContent = prevText;
             setFeedbackButtonsEnabled(true);
-            alert(`再生成に失敗しました：${e?.message || e}`);
+            alert(`失敗：${e?.message || e}`);
           }
         });
       });
 
-      // ✅ OKボタン（今はMVP：とりあえず通知だけ）
-      okBtn.addEventListener("click", () => {
-        alert("OK（確定）の処理は次に追加できます（例：sns_post_plans.status='approved'）。");
-      });
-
-      // STEP1: 画像を保存用に開く
-      openImageBtn.addEventListener("click", () => {
-        if (!currentMediaUrl) return;
-        window.open(currentMediaUrl, "_blank");
-      });
-
-      // STEP3: Instagram を開く
-      openInstagramBtn.addEventListener("click", () => {
-        window.location.href = "instagram://app";
-        setTimeout(() => {
-          window.location.href = "https://www.instagram.com/";
-        }, 1200);
+      // OKボタン
+      document.getElementById("ok-btn").addEventListener("click", () => {
+        alert("OKとして確定（次はここでステータス更新などを実装できます）");
       });
     </script>
   </body>
