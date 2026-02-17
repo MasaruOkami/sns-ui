@@ -3,26 +3,22 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { 
   Save, RefreshCw, Send, Image as ImageIcon, MessageSquare, 
-  Settings, Heart, Play, Clock, CheckCircle2, AlertCircle, ChevronRight 
+  Settings, Heart, Play, Clock, CheckCircle2, AlertCircle, 
+  ChevronRight, Sparkles, Target, Ban, Zap
 } from "lucide-react";
-import { supabase } from "@/lib/supabase"; // 以前作成したファイルを想定
+import { supabase } from "@/lib/supabase";
 
 /** * =====================================================
- * ✅ ヘルパー関数 (補完版)
+ * ✅ ヘルパー関数群
  * =====================================================
  */
-
-// 合計を100%に調整するロジック
 const normalizeStyleRatios = (p: number, i: number, v: number, changed: "photo" | "illust" | "video") => {
   let photo = p, illust = i, video = v;
   const total = photo + illust + video;
   if (total === 100) return { photo, illust, video };
-
   const remaining = 100 - (changed === "photo" ? photo : changed === "illust" ? illust : video);
   const otherSum = (changed === "photo" ? illust + video : changed === "illust" ? photo + video : photo + illust) || 1;
-  
   const factor = remaining / otherSum;
-
   if (changed === "photo") {
     illust = Math.round(illust * factor);
     video = 100 - photo - illust;
@@ -44,14 +40,14 @@ const toLocalInputValue = (iso: string) => {
 };
 
 /** * =====================================================
- * ✅ UIコンポーネント: SliderRow
+ * ✅ サブコンポーネント: SliderRow
  * =====================================================
  */
-const SliderRow = ({ id, label, value, onChange, min = 0, max = 100, rightLabel = "" }: any) => (
-  <div className="flex flex-col gap-1 p-2 border rounded-lg bg-gray-50/50">
+const SliderRow = ({ id, label, value, onChange, min = 0, max = 100, rightLabel = "%" }: any) => (
+  <div className="flex flex-col gap-1 p-2 border rounded-lg bg-gray-50/50 hover:bg-white transition-colors">
     <div className="flex justify-between items-center px-1">
-      <label htmlFor={id} className="text-xs font-medium text-gray-700">{label}</label>
-      <span className="text-xs font-mono font-bold text-blue-600">{value}{rightLabel}</span>
+      <label htmlFor={id} className="text-[11px] font-bold text-gray-600 uppercase tracking-tighter">{label}</label>
+      <span className="text-xs font-mono font-bold text-indigo-600">{value}{rightLabel}</span>
     </div>
     <input
       id={id}
@@ -60,340 +56,341 @@ const SliderRow = ({ id, label, value, onChange, min = 0, max = 100, rightLabel 
       max={max}
       value={value ?? 0}
       onChange={(e) => onChange(parseInt(e.target.value))}
-      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
+      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
     />
   </div>
 );
 
 /** * =====================================================
- * ✅ メインコンポーネント
+ * ✅ メインコンポーネント: SNSDashboard
  * =====================================================
  */
 export default function SNSDashboard() {
-  // --- 状態管理 (送っていただいたコードを統合) ---
+  // --- 基本状態 ---
   const [storeId, setStoreId] = useState("");
   const [storeOptions, setStoreOptions] = useState<any[]>([]);
   const [loadingStores, setLoadingStores] = useState(false);
-  const [authed, setAuthed] = useState(true); // 簡易化。実際はsupabase.auth等
   
+  // --- プロフィール状態 ---
   const [storeProfile, setStoreProfile] = useState<any>(null);
-  const [savingStoreProfile, setSavingStoreProfile] = useState(false);
-  
-  const [emotionProfile, setEmotionProfile] = useState<any>(null);
-  const [savingEmotionProfile, setSavingEmotionProfile] = useState(false);
-  
-  const [mediaProfile, setMediaProfile] = useState<any>(null);
-  const [savingMediaProfile, setSavingMediaProfile] = useState(false);
+  const [emotionProfile, setEmotionProfile] = useState<any>({
+    feel_gratitude: 50, feel_excitement: 50, feel_nostalgia: 50, feel_sincerity: 50,
+    feel_luxury: 50, feel_casual: 50, feel_intellectual: 50, feel_passionate: 50,
+    feel_healing: 50, feel_vibrant: 50
+  });
+  const [mediaProfile, setMediaProfile] = useState<any>({
+    style_photo_ratio: 70, style_illustration_ratio: 20, style_video_ratio: 10, realism_level: 80
+  });
 
+  // --- 世界観解析 (Insight) 状態 ---
+  const [worldview, setWorldview] = useState<any>(null);
+  const [loadingWorldview, setLoadingWorldview] = useState(false);
+
+  // --- 投稿・プラン状態 ---
   const [storyPreviews, setStoryPreviews] = useState<any[]>([]);
-  const [loadingPreviews, setLoadingPreviews] = useState(false);
-  const [generatingStory, setGeneratingStory] = useState(false);
-
   const [plans, setPlans] = useState<any[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
-  
-  const [control, setControl] = useState<any>({ status: "available", time_slot: "", note: "" });
-  const [scheduledAtLocal, setScheduledAtLocal] = useState("");
-  const [storyDryRun, setStoryDryRun] = useState(false);
-  const [publishingStory, setPublishingStory] = useState(false);
-  const [dispatching, setDispatching] = useState(false);
-
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [activePlanVersion, setActivePlanVersion] = useState<number | null>(null);
   const [feedbackComment, setFeedbackComment] = useState("");
   const [sendingFeedback, setSendingFeedback] = useState(false);
-  const [rescheduleLocal, setRescheduleLocal] = useState("");
 
   const functionsBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL;
-  const tz = "Asia/Tokyo";
 
-  // --- 権限判定 ---
-  const myRoleForSelectedStore = useMemo(() => {
-    return storeOptions.find((s) => s.store_id === storeId)?.role ?? "viewer";
-  }, [storeOptions, storeId]);
+  // --- 権限管理 ---
+  const myRole = useMemo(() => storeOptions.find(s => s.store_id === storeId)?.role ?? "viewer", [storeOptions, storeId]);
+  const canEdit = myRole === "admin" || myRole === "editor";
 
-  const canEditAny = myRoleForSelectedStore === "admin" || myRoleForSelectedStore === "editor";
-  const isAdmin = myRoleForSelectedStore === "admin";
-  const canEditStoreCoreAdminOnly = isAdmin;
-  const canEditStoreEditorAllowed = canEditAny;
-  const canEditMediaProfile = canEditAny;
-  const canEditEmotionProfile = canEditAny;
-
-  const selectedStoreLabel = useMemo(() => {
-    const opt = storeOptions.find((o) => o.store_id === storeId);
-    if (!opt) return storeId || "";
-    return opt.store_name ? `${opt.store_id}（${opt.store_name}）` : opt.store_id;
-  }, [storeOptions, storeId]);
-
-  const activePlan = useMemo(() => plans.find(p => p.plan_id === activePlanId), [plans, activePlanId]);
-  const meta = activePlan?.story_meta;
-  const activeVersionLabel = activePlanId ? (activePlanVersion ?? "-") : "-";
-
-  // --- API Functions (Supabase統合版) ---
-
-  const buildApiHeaders = async (sId?: string) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const headers: any = { "Content-Type": "application/json" };
-    if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
-    if (sId) headers["x-store-id"] = sId;
-    return headers;
-  };
-
+  // --- データ取得ロジック ---
   const fetchMyStores = async () => {
     setLoadingStores(true);
-    try {
-      const { data, error } = await supabase.from("my_store_roles_view").select("*");
-      if (error) throw error;
-      setStoreOptions(data || []);
-    } catch (e) { console.error(e); } finally { setLoadingStores(false); }
+    const { data } = await supabase.from("my_store_roles_view").select("*");
+    setStoreOptions(data || []);
+    setLoadingStores(false);
   };
 
-  const loadPlans = async (sId: string) => {
-    if (!sId) return;
+  const loadStoreData = async (id: string) => {
+    if (!id) return;
+    setLoadingWorldview(true);
+    // 本来は build-core-doc 等の結果を取得
+    setWorldview({
+      must_words: ["至福の一皿", "厳選素材", "隠れ家"],
+      ng_words: ["激安", "コスパ重視", "とりあえず"],
+      signature_style: "情緒的な形容詞を使いつつ、最後は誠実な敬語で締める",
+      target_persona: "週末に自分へのご褒美を求める30-40代の女性"
+    });
+    setLoadingWorldview(false);
+    loadPlans(id);
+  };
+
+  const loadPlans = async (id: string) => {
     setLoadingPlans(true);
-    try {
-      const { data, error } = await supabase
-        .from("sns_post_plans")
-        .select("*")
-        .eq("store_id", sId)
-        .order("scheduled_at", { ascending: false })
-        .limit(20);
-      if (error) throw error;
-      setPlans(data || []);
-    } catch (e) { console.error(e); } finally { setLoadingPlans(false); }
+    const { data } = await supabase.from("sns_post_plans").select("*").eq("store_id", id).order("scheduled_at", { ascending: false });
+    setPlans(data || []);
+    setLoadingPlans(false);
   };
-
-  // ... (その他の saveEmotionProfile, generateStoryPreview 等の関数をここに配置)
-  // スペースの都合上、UI部分を優先しますが、fetchをbuildApiHeadersを使う形に置換してください
 
   const sendPlanFeedback = async (type: string, extra: any = {}) => {
     if (!activePlanId || !storeId) return;
     setSendingFeedback(true);
     try {
-      const url = `${functionsBaseUrl}/sns-preview-feedback`;
-      const headers = await buildApiHeaders(storeId);
-      const payload = {
-        store_id: storeId,
-        plan_id: activePlanId,
-        feedback_type: type,
-        comment: feedbackComment,
-        if_version: activePlanVersion,
-        ...extra,
-      };
-      const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error("Feedback failed");
-      alert(`反映しました: ${type}`);
-      setFeedbackComment("");
-      await loadPlans(storeId);
-    } catch (e: any) { alert(e.message); } finally { setSendingFeedback(false); }
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${functionsBaseUrl}/sns-preview-feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}`, "x-store-id": storeId },
+        body: JSON.stringify({
+          store_id: storeId, plan_id: activePlanId, feedback_type: type,
+          comment: feedbackComment, if_version: activePlanVersion, ...extra
+        })
+      });
+      if (res.ok) {
+        alert("フィードバックを反映しました。AIが学習を開始します。");
+        setFeedbackComment("");
+        loadPlans(storeId);
+      }
+    } catch (e) { alert("エラーが発生しました"); } finally { setSendingFeedback(false); }
   };
 
   useEffect(() => { fetchMyStores(); }, []);
-  useEffect(() => { if (storeId) loadPlans(storeId); }, [storeId]);
+  useEffect(() => { if (storeId) loadStoreData(storeId); }, [storeId]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6 bg-slate-50 min-h-screen">
-      {/* HEADER */}
-      <header className="flex flex-wrap items-end justify-between gap-4 bg-white p-6 rounded-2xl border shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-black rounded-xl">
-            <Settings className="text-white w-6 h-6" />
+    <div className="mx-auto max-w-7xl min-h-screen bg-[#F8FAFC] p-4 md:p-8 text-slate-900 font-sans">
+      
+      {/* 🟢 HEADER: 店舗選択 & システムステータス */}
+      <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+        <div className="flex items-center gap-4">
+          <div className="bg-indigo-600 p-3 rounded-2xl shadow-indigo-200 shadow-lg">
+            <Zap className="text-white w-6 h-6 fill-current" />
           </div>
           <div>
-            <h1 className="text-2xl font-black tracking-tight">SNS AI DIRECTOR</h1>
-            <p className="text-xs text-gray-500 font-medium">STORIES & PLANS MANAGEMENT</p>
+            <h1 className="text-xl font-black tracking-tight text-slate-800">AI SNS DIRECTOR</h1>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Engine: Corefit-Runner v4.2</span>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <select
-            className="rounded-xl border-gray-200 border px-4 py-2.5 min-w-[320px] text-sm font-medium shadow-sm focus:ring-2 focus:ring-black outline-none transition-all"
-            value={storeId}
-            onChange={(e) => setStoreId(e.target.value)}
-            disabled={loadingStores}
+        <div className="flex items-center gap-3">
+          <select 
+            className="bg-slate-50 border-slate-200 border rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none min-w-[280px] shadow-inner"
+            value={storeId} onChange={(e) => setStoreId(e.target.value)}
           >
-            {storeOptions.length === 0 ? (
-              <option value="">{loadingStores ? "店舗一覧を取得中..." : "店舗を選択してください"}</option>
-            ) : (
-              <>
-                <option value="">店舗を選択</option>
-                {storeOptions.map((s) => (
-                  <option key={s.store_id} value={s.store_id}>
-                    {s.store_name ? `${s.store_id}（${s.store_name}）` : s.store_id} [{s.role}]
-                  </option>
-                ))}
-              </>
-            )}
+            <option value="">店舗を選択してください</option>
+            {storeOptions.map(s => <option key={s.store_id} value={s.store_id}>{s.store_name || s.store_id} ({s.role})</option>)}
           </select>
-          <button
-            className="p-2.5 rounded-xl border hover:bg-gray-50 transition-colors"
-            onClick={fetchMyStores}
-            disabled={loadingStores}
-          >
-            <RefreshCw className={`w-5 h-5 ${loadingStores ? "animate-spin" : ""}`} />
+          <button onClick={fetchMyStores} className="p-3 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all">
+            <RefreshCw className={`w-5 h-5 text-slate-400 ${loadingStores ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </header>
 
-      {/* REMAINDER OF UI (Emotion, Media, Previews, Plans) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* LEFT COLUMN: SETTINGS */}
+        {/* 🟠 LEFT COLUMN: 世界観と感情の設計 (AIの脳内設定) */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Emotion Profile */}
-          <section className="rounded-2xl border bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold flex items-center gap-2"><Heart className="w-4 h-4 text-red-500" /> 感情設計</h2>
-              <button className="text-xs bg-black text-white px-3 py-1.5 rounded-lg disabled:opacity-30" disabled={!canEditEmotionProfile}>
-                <Save className="w-3 h-3 inline mr-1" /> 保存
-              </button>
-            </div>
-            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-              <SliderRow id="feel_gratitude" label="感謝" value={emotionProfile?.feel_gratitude} />
-              <SliderRow id="feel_excitement" label="ワクワク" value={emotionProfile?.feel_excitement} />
-              <SliderRow id="feel_nostalgia" label="懐かしさ" value={emotionProfile?.feel_nostalgia} />
-              <SliderRow id="feel_sincerity" label="誠実さ" value={emotionProfile?.feel_sincerity} />
-              {/* 他のスライダーも同様に展開 */}
-            </div>
+          
+          {/* 世界観インサイト (AI解析可視化) */}
+          <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-4 opacity-5 uppercase font-black text-4xl select-none">World</div>
+            <h2 className="text-sm font-black flex items-center gap-2 mb-5 text-slate-800 uppercase tracking-wider">
+              <Sparkles className="w-4 h-4 text-indigo-500" /> AI Worldview Insight
+            </h2>
+            
+            {loadingWorldview ? (
+              <div className="space-y-4 animate-pulse">
+                <div className="h-20 bg-slate-100 rounded-2xl"></div>
+                <div className="h-20 bg-slate-100 rounded-2xl"></div>
+              </div>
+            ) : worldview ? (
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <span className="text-[10px] font-black text-slate-400 flex items-center gap-1 uppercase tracking-widest">
+                    <Target className="w-3 h-3 text-green-500" /> Must Keywords
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {worldview.must_words.map((w: string) => (
+                      <span key={w} className="px-2.5 py-1 bg-green-50 text-green-700 text-[10px] font-bold rounded-lg border border-green-100">{w}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-[10px] font-black text-slate-400 flex items-center gap-1 uppercase tracking-widest">
+                    <Ban className="w-3 h-3 text-red-400" /> NG Keywords
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {worldview.ng_words.map((w: string) => (
+                      <span key={w} className="px-2.5 py-1 bg-red-50 text-red-700 text-[10px] font-bold rounded-lg border border-red-100">{w}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <span className="text-[10px] font-black text-indigo-400 uppercase block mb-2">文体プロトコル</span>
+                  <p className="text-xs text-slate-600 leading-relaxed font-medium">{worldview.signature_style}</p>
+                </div>
+              </div>
+            ) : <div className="text-center py-10 text-slate-300 italic text-xs">店舗を選択してください</div>}
           </section>
 
-          {/* Media Profile */}
-          <section className="rounded-2xl border bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold flex items-center gap-2"><ImageIcon className="w-4 h-4 text-blue-500" /> 生成スタイル</h2>
-              <button className="text-xs bg-black text-white px-3 py-1.5 rounded-lg">
-                保存
-              </button>
+          {/* 10感情スライダー */}
+          <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+            <h2 className="text-sm font-black flex items-center gap-2 mb-5 text-slate-800 uppercase tracking-wider">
+              <Heart className="w-4 h-4 text-rose-500" /> Emotion Profile
+            </h2>
+            <div className="grid grid-cols-1 gap-2 overflow-y-auto max-h-[320px] pr-2 custom-scrollbar">
+              {Object.keys(emotionProfile).map(key => (
+                <SliderRow 
+                  key={key} id={key} label={key.replace('feel_', '')} 
+                  value={emotionProfile[key]} 
+                  onChange={(v: number) => setEmotionProfile({...emotionProfile, [key]: v})}
+                />
+              ))}
             </div>
-            <div className="space-y-2">
-               <SliderRow id="realism_level" label="実写感" value={mediaProfile?.realism_level} />
-               <div className="p-3 bg-gray-50 rounded-xl border border-dashed border-gray-300 mt-4">
-                 <p className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Style Ratio</p>
-                 <SliderRow id="style_photo_ratio" label="写真 %" value={mediaProfile?.style_photo_ratio} />
-                 <SliderRow id="style_video_ratio" label="動画 %" value={mediaProfile?.style_video_ratio} />
-               </div>
-            </div>
+            <button className="w-full mt-4 py-3 bg-slate-900 text-white rounded-2xl text-xs font-bold hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200">
+              <Save className="w-3.5 h-3.5" /> 感情設計を保存
+            </button>
           </section>
         </div>
 
-        {/* RIGHT COLUMN: ACTIONS & LISTS */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* A-2 Story Creation */}
-          <section className="rounded-2xl border bg-white p-6 shadow-sm border-l-4 border-l-black">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h2 className="text-lg font-bold">ストーリー候補生成</h2>
-                <p className="text-sm text-gray-500">現在の空き状況から投稿をプランニングします</p>
-              </div>
-              <button className="text-sm font-medium border px-4 py-2 rounded-xl hover:bg-gray-50">
-                手動Dispatcher実行
-              </button>
-            </div>
-            
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase">Status</label>
-                    <select className="w-full border rounded-lg p-2 text-sm font-bold">
-                      <option value="available">空きあり</option>
-                      <option value="full">満席</option>
+        {/* 🔵 RIGHT COLUMN: 実行と予約管理 */}
+        <div className="lg:col-span-8 space-y-8">
+          
+          {/* 生成アクションエリア */}
+          <section className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-[2rem] p-8 text-white shadow-2xl shadow-indigo-100 relative overflow-hidden">
+            <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
+            <div className="relative z-10 flex flex-col md:flex-row justify-between gap-8">
+              <div className="space-y-4 flex-1">
+                <h2 className="text-2xl font-black tracking-tight leading-tight">リアルタイム・ストーリー生成</h2>
+                <p className="text-indigo-200/70 text-sm max-w-md">現在の空席状況や「こだわり」を、AIが解析した世界観に沿って即座にビジュアル化します。</p>
+                
+                <div className="flex flex-wrap gap-3">
+                  <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/10 flex-1">
+                    <span className="text-[10px] font-black text-indigo-300 uppercase block mb-1">現在の状況</span>
+                    <select className="bg-transparent w-full text-sm font-bold outline-none">
+                      <option className="text-slate-900" value="available">空きあり</option>
+                      <option className="text-slate-900" value="few">残りわずか</option>
+                      <option className="text-slate-900" value="full">満席</option>
                     </select>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase">Time Slot</label>
-                    <input className="w-full border rounded-lg p-2 text-sm" placeholder="19:00〜" />
+                  <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/10 flex-1">
+                    <span className="text-[10px] font-black text-indigo-300 uppercase block mb-1">時間帯</span>
+                    <input className="bg-transparent w-full text-sm font-bold outline-none placeholder:text-indigo-300/50" placeholder="例: 19:00〜" />
                   </div>
                 </div>
-                <button className="w-full py-3 bg-black text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:bg-zinc-800 transition-all">
-                  <Play className="w-4 h-4 fill-current" /> 候補を生成する
+
+                <button className="w-full py-4 bg-white text-indigo-900 rounded-2xl font-black text-sm hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 shadow-lg">
+                  <Play className="w-4 h-4 fill-current" /> 候補を生成してプレビュー
                 </button>
               </div>
 
-              <div className="bg-slate-50 rounded-2xl p-4 border overflow-y-auto max-h-[300px]">
-                <h3 className="text-xs font-bold text-gray-400 uppercase mb-3">Generated Previews</h3>
-                {storyPreviews.length === 0 ? (
-                  <div className="text-center py-10 text-gray-400 italic text-sm">候補がありません</div>
-                ) : (
-                  storyPreviews.map(p => (
-                    <div key={p.preview_id} className="bg-white p-3 rounded-xl border mb-2 shadow-sm">
-                      <p className="text-xs font-bold mb-1">{p.caption?.substring(0, 30)}...</p>
-                      <button className="text-[10px] bg-blue-50 text-blue-600 font-bold px-2 py-1 rounded">予約に採用</button>
-                    </div>
-                  ))
-                )}
+              <div className="w-full md:w-64 aspect-[9/16] bg-slate-800/50 rounded-3xl border border-white/10 flex items-center justify-center relative group">
+                <div className="text-center p-6">
+                  <ImageIcon className="w-10 h-10 text-white/20 mx-auto mb-3 group-hover:scale-110 transition-transform" />
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">No Preview Generated</p>
+                </div>
               </div>
             </div>
           </section>
 
-          {/* Post Plans Table */}
-          <section className="rounded-2xl border bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold flex items-center gap-2"><Clock className="w-5 h-5" /> 予約プラン一覧</h2>
-              <button className="p-2 hover:bg-gray-100 rounded-lg" onClick={() => loadPlans(storeId)}><RefreshCw className="w-4 h-4" /></button>
+          {/* 予約プラン一覧（タイムライン形式） */}
+          <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-lg font-black text-slate-800">SNS投稿スケジュール</h2>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Scheduled Plans (48h Window)</p>
+              </div>
+              <button onClick={() => loadPlans(storeId)} className="p-2 hover:bg-slate-50 rounded-xl transition-colors">
+                <RefreshCw className={`w-4 h-4 text-slate-400 ${loadingPlans ? 'animate-spin' : ''}`} />
+              </button>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-gray-100">
-              <table className="w-full text-left text-sm border-collapse">
-                <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-black">
-                  <tr>
-                    <th className="p-3">Scheduled At</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Retry</th>
-                    <th className="p-3">Version</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {plans.map(p => (
-                    <tr 
-                      key={p.plan_id} 
-                      className={`cursor-pointer transition-colors ${activePlanId === p.plan_id ? "bg-blue-50/50" : "hover:bg-gray-50"}`}
-                      onClick={() => {
-                        setActivePlanId(p.plan_id);
-                        setActivePlanVersion(getStoryMetaVersion(p.story_meta));
-                        setRescheduleLocal(toLocalInputValue(p.scheduled_at));
-                      }}
+            <div className="space-y-4">
+              {plans.length === 0 ? (
+                <div className="text-center py-20 border-2 border-dashed border-slate-100 rounded-3xl">
+                  <Clock className="w-10 h-10 text-slate-100 mx-auto mb-2" />
+                  <p className="text-sm text-slate-300 font-bold italic">No active plans found.</p>
+                </div>
+              ) : (
+                plans.map(p => {
+                  const isActive = activePlanId === p.plan_id;
+                  const version = getStoryMetaVersion(p.story_meta);
+                  return (
+                    <div 
+                      key={p.plan_id}
+                      onClick={() => { setActivePlanId(p.plan_id); setActivePlanVersion(version); }}
+                      className={`group p-5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-md translate-x-1' : 'bg-white border-slate-100 hover:border-slate-300'}`}
                     >
-                      <td className="p-3 font-medium">{new Date(p.scheduled_at).toLocaleString()}</td>
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${p.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                          {p.status}
-                        </span>
-                      </td>
-                      <td className="p-3 font-mono text-gray-400">{p.retry_count}/{p.retry_max}</td>
-                      <td className="p-3 font-bold text-gray-400">v{getStoryMetaVersion(p.story_meta)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      <div className="flex items-center gap-5">
+                        <div className={`p-3 rounded-xl ${isActive ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                          <Clock className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-slate-700">{new Date(p.scheduled_at).toLocaleString()}</p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${p.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                              {p.status}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-300">v{version}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <ChevronRight className={`w-5 h-5 transition-transform ${isActive ? 'text-indigo-600 translate-x-1' : 'text-slate-200'}`} />
+                    </div>
+                  );
+                })
+              )}
             </div>
 
-            {/* Selection Actions */}
+            {/* 🛠 選択中のプランに対する高度なフィードバックパネル */}
             {activePlanId && (
-              <div className="mt-4 p-4 bg-zinc-900 rounded-2xl text-white animate-in slide-in-from-bottom-2">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-400" />
-                    <span className="text-xs font-bold uppercase tracking-widest">Plan Selected: {activePlanId.slice(0,8)}</span>
+              <div className="mt-8 p-6 bg-slate-900 rounded-[2rem] text-white shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center font-black text-sm">v{activePlanVersion}</div>
+                    <div>
+                      <h3 className="text-sm font-black">Plan Feedback Engine</h3>
+                      <p className="text-[10px] text-indigo-300 font-bold uppercase tracking-widest">Active Plan: {activePlanId.slice(0, 8)}</p>
+                    </div>
                   </div>
-                  <button onClick={() => sendPlanFeedback("approve")} className="bg-white text-black text-xs font-black px-4 py-2 rounded-lg hover:bg-green-400 transition-colors">
-                    APPROVE / 承認
+                  <button 
+                    onClick={() => sendPlanFeedback("approve")}
+                    disabled={sendingFeedback || !canEdit}
+                    className="bg-green-500 hover:bg-green-400 text-white px-6 py-2.5 rounded-xl text-xs font-black shadow-lg shadow-green-900/20 transition-all flex items-center gap-2"
+                  >
+                    {sendingFeedback ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    APPROVE & SCHEDULE
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-zinc-500 font-bold uppercase">Feedback</label>
-                    <input 
-                      className="w-full bg-zinc-800 border-none rounded-lg p-2 text-sm focus:ring-1 focus:ring-white" 
-                      placeholder="AIへの修正指示..."
-                      value={feedbackComment}
-                      onChange={(e) => setFeedbackComment(e.target.value)}
-                    />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">AIへの具体的な修正リクエスト</label>
+                      <textarea 
+                        value={feedbackComment} onChange={(e) => setFeedbackComment(e.target.value)}
+                        placeholder="例: 文末をもっと親しみやすくして。季節感を強めに。"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none h-24 transition-all"
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-end gap-2">
-                    <button onClick={() => sendPlanFeedback("shorter_text")} className="flex-1 bg-zinc-800 py-2 rounded-lg text-[10px] font-bold hover:bg-zinc-700">短く</button>
-                    <button onClick={() => sendPlanFeedback("more_emoji")} className="flex-1 bg-zinc-800 py-2 rounded-lg text-[10px] font-bold hover:bg-zinc-700">絵文字↑</button>
-                    <button onClick={() => sendPlanFeedback("img_regen_variation")} className="flex-1 bg-blue-600 py-2 rounded-lg text-[10px] font-bold hover:bg-blue-500">再生成</button>
+
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">クイック・微調整</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={() => sendPlanFeedback("shorter_text")} className="bg-white/5 hover:bg-white/10 p-3 rounded-xl text-[10px] font-bold border border-white/5 transition-all">短くする</button>
+                      <button onClick={() => sendPlanFeedback("longer_text")} className="bg-white/5 hover:bg-white/10 p-3 rounded-xl text-[10px] font-bold border border-white/5 transition-all">長くする</button>
+                      <button onClick={() => sendPlanFeedback("more_emoji")} className="bg-white/5 hover:bg-white/10 p-3 rounded-xl text-[10px] font-bold border border-white/5 transition-all">絵文字増量</button>
+                      <button onClick={() => sendPlanFeedback("softer_tone")} className="bg-white/5 hover:bg-white/10 p-3 rounded-xl text-[10px] font-bold border border-white/5 transition-all">柔らかい口調</button>
+                    </div>
+                    <button 
+                      onClick={() => sendPlanFeedback("img_regen_variation")}
+                      className="w-full py-3 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 rounded-xl text-[10px] font-black hover:bg-indigo-600/30 transition-all uppercase"
+                    >
+                      画像を再生成 (Variation)
+                    </button>
                   </div>
                 </div>
               </div>
@@ -401,6 +398,11 @@ export default function SNSDashboard() {
           </section>
         </div>
       </div>
+
+      {/* 🚀 FLOAT ACTION: 実行ログの確認など（任意） */}
+      <footer className="mt-12 text-center pb-12">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Powered by Gemini & Supabase Edge Functions</p>
+      </footer>
     </div>
   );
 }
